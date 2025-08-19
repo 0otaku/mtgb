@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>みんなでブラケット診断</title>
+
+  <!-- perf -->
+  <link rel="preconnect" href="https://esm.sh" crossorigin>
+  <link rel="preconnect" href="https://www.hareruyamtg.com" crossorigin>
+  <link rel="dns-prefetch" href="//www.hareruyamtg.com">
+
+  <style>
+    :root{
+      --bg:#fff; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb;
+      --brand:#d62828; --c2:#4E9CFF; --c3:#FFC857; --c4:#FF6B6B;
+      --radius:14px;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:"Inter","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--fg);background:var(--bg)}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 12px}
+    .title{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .site{font-weight:800;letter-spacing:.01em;font-size:20px}
+    @media(min-width:1000px){ .site{font-size:24px} }
+    .deck-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+
+    .small-btn{font-size:13px;border:1px solid var(--border);background:#fff;color:#374151;border-radius:999px;padding:6px 12px;cursor:pointer}
+    .small-btn:hover{background:#fafafa}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+
+    .grid{display:grid;gap:16px}
+    @media(min-width:1000px){ .grid{grid-template-columns:1.2fr .8fr} }
+
+    /* 埋め込み */
+    .embed-wrap{position:relative;background:#fff;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+    iframe{width:100%;height:70vh;min-height:520px;border:0;display:block;background:#fff}
+    /* 埋め込みオーバーレイ：デフォルト非表示に戻す */
+    .overlay{
+      position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+      background:linear-gradient(0deg, rgba(255,255,255,.94), rgba(255,255,255,.94));
+     text-align:center;padding:18px
+            }
+    .overlay .box{max-width:560px}
+    .overlay .box h3{margin:0 0 8px;font-size:18px}
+    .overlay .box p{margin:6px 0;color:#4b5563;font-size:14px}
+    .overlay .box .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .overlay .box a, .overlay .box button{
+      border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;cursor:pointer;font-size:14px
+    }
+
+    /* 投票パネル */
+    .vote-card{display:flex;flex-direction:column;gap:12px}
+    .vote-block{padding:12px;border:1px dashed var(--border);border-radius:14px;background:#fafafa}
+    .prompt{font-weight:800;letter-spacing:.01em;font-size:16px}
+    @media(min-width:1000px){ .prompt{font-size:20px} }
+
+    /* 3ボタン（横幅ピッタリ） */
+    .vote-row{display:grid; gap:10px; grid-template-columns:1fr 1fr 1fr; margin-top:10px}
+    .chip{
+      width:100%; height:64px; font-size:22px; font-weight:800;
+      border:1px solid var(--border); border-radius:12px; background:#f4f4f5;
+      cursor:pointer; transition:transform .07s ease, background .15s ease, box-shadow .15s ease;
+    }
+    .chip:hover{background:#e9e9eb}
+    .chip:active{transform:scale(.98)}
+    .b2{background:color-mix(in srgb, var(--c2) 16%, white)}
+    .b3{background:color-mix(in srgb, var(--c3) 20%, white)}
+    .b4{background:color-mix(in srgb, var(--c4) 20%, white)}
+    @media(min-width:1000px){ .chip{height:72px; font-size:24px} }
+
+    /* 回答しない（改行して控えめ） */
+    .skip-row{margin-top:6px}
+    .skip{font-size:12px;color:#6b7280;text-decoration:underline;background:transparent;border:0;cursor:pointer}
+
+    /* 集計（一本棒の割合） */
+    .results{display:none;flex-direction:column;gap:8px}
+    .bar{position:relative;height:18px;border-radius:999px;background:#f3f4f6;border:1px solid #e5e7eb;overflow:hidden}
+    .seg{position:absolute;top:0;bottom:0}
+    .seg.b2{background:var(--c2)} .seg.b3{background:var(--c3)} .seg.b4{background:var(--c4)}
+    .legend{display:flex;gap:10px;flex-wrap:wrap;color:#374151;font-size:12px}
+    .legend span{display:inline-flex;align-items:center;gap:6px}
+    .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+    .hint{font-size:12px;color:var(--muted)}
+
+    /* シート（登録/削除/自分の登録） */
+    .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none}
+    .sheet{position:fixed;right:0;top:0;bottom:0;width:min(520px,100%);background:#fff;box-shadow:-10px 0 30px rgba(0,0,0,.2);display:none;flex-direction:column}
+    .sheet header{padding:16px;border-bottom:1px solid var(--border)}
+    .sheet .body{padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:calc(100vh - 56px)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px}
+    .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
+    .note{font-size:12px;color:var(--muted);line-height:1.6}
+    .msg{font-size:14px}
+    .item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:8px}
+    .item a{color:#111;text-decoration:none}
+    .item a:hover{text-decoration:underline}
+
+    .subtle{opacity:.6; font-size:12px}
+    .subtle:hover{opacity:.8}
+
+    .search-card{display:flex;flex-direction:column;gap:12px}
+    .search-row{display:flex;gap:8px;flex-wrap:wrap}
+    input[type="text"]{
+      flex:1 1 420px; min-width:260px;
+      padding:14px 16px; border:1px solid var(--border); border-radius:10px; font-size:15px;
+    }
+
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:999px;display:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <div class="site">みんなでブラケット診断</div>
+        <div class="deck-meta">
+        <strong data-deck-title>Hareruya Deck</strong>
+        <span class="hint" id="sourceLink" style="margin-left:6px"></span>
+        </div>
+      </div>
+      <button id="openSheet" class="small-btn">登録 / 削除</button>
+    </header>
+
+    <div class="grid">
+      <div class="embed-wrap card">
+        <iframe id="deckFrame" title="Hareruya Deck"
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation-by-user-activation"
+                loading="eager"></iframe>
+
+        <!-- フェイルオーバー表示（初期は表示しておく→ロードで非表示） -->
+        <div class="overlay" id="embedFail">
+          <div class="box">
+            <h3>ページを表示できませんでした</h3>
+            <p>ブラウザや拡張機能の制限で埋め込みがブロックされる場合があります。下のリンクから新しいタブで開いてください。</p>
+            <div class="row">
+              <a id="openHareruyaLink" target="_blank" rel="noopener noreferrer">hareruyamtg.com で開く</a>
+              <button id="retryEmbed">再読み込み</button>
+            </div>
+            <p class="note" style="margin-top:10px">※ iOS/Safariの場合、トラッキング防止/コンテンツブロッカー設定により表示されないことがあります。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card vote-card">
+        <div class="vote-block">
+          <div class="prompt">このデッキのブラケットは？</div>
+          <div class="vote-row">
+            <button class="chip b2" data-vote="2">２</button>
+            <button class="chip b3" data-vote="3">３</button>
+            <button class="chip b4" data-vote="4">４</button>
+          </div>
+          <div class="skip-row">
+            <button class="skip" id="skipBtn" title="このデッキは評価しない">回答しない</button>
+          </div>
+          <div class="hint">※ 1デッキにつき1回まで</div>
+        </div>
+
+        <div class="results" id="results">
+          <div class="bar" aria-label="集計バー">
+            <div class="seg b2" id="seg2" style="left:0;width:0%"></div>
+            <div class="seg b3" id="seg3" style="left:0;width:0%"></div>
+            <div class="seg b4" id="seg4" style="left:0;width:0%"></div>
+          </div>
+          <div class="legend">
+            <span><i class="dot" style="background:var(--c2)"></i> ブラケット２ <b id="p2">0%</b></span>
+            <span><i class="dot" style="background:var(--c3)"></i> ブラケット３ <b id="p3">0%</b></span>
+            <span><i class="dot" style="background:var(--c4)"></i> ブラケット４ <b id="p4">0%</b></span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:2px">
+            <button id="nextBtn" class="small-btn">次のデッキへ</button>
+            <span class="hint" id="autoNextHint"></span>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="reportBtn" class="small-btn subtle">このデッキに削除希望を出す</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card search-card" style="margin-top:16px">
+      <div class="prompt">検索</div>
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="例: https://www.hareruyamtg.com/decks/9999999  または 9999999">
+        <button id="searchBtn" class="small-btn" style="background:#fff">検索</button>
+      </div>
+      <div class="note">対象URL形式: <b>https://www.hareruyamtg.com/decks/＜数字＞</b>（数字だけでも可）</div>
+    </div>
+
+    <footer class="card" style="margin-top:16px">
+      <div class="note">
+        ※ 本サイトは外部サイトのページを埋め込み表示します。掲載URLはユーザー投稿であり、
+        内容の正確性・合法性を保証しません。著作権等の権利は各権利者に帰属します。
+        不適切・権利侵害の疑いがあるURLは「このデッキに削除希望を出す」からご連絡ください。
+        必要に応じて削除対応します。
+      </div>
+    </footer>
+  </div>
+
+  <!-- 右シート -->
+  <div class="sheet-backdrop" id="backdrop"></div>
+  <aside class="sheet" id="sheet">
+    <header>
+      <div style="font-weight:700">登録 / 削除</div>
+      <button id="closeSheet" class="small-btn right">閉じる</button>
+    </header>
+    <div class="body">
+      <div class="tabs">
+        <button class="tab active" data-tab="reg">登録</button>
+        <button class="tab" data-tab="del">削除（通報）</button>
+        <button class="tab" data-tab="mine">自分の登録</button>
+      </div>
+
+      <div id="pane-reg">
+        <div class="note">デッキのURL（または数字ID）を入力して「登録」。形式: <b>https://www.hareruyamtg.com/decks/＜数字＞</b></div>
+        <div class="search-row">
+          <input type="text" id="regUrl" placeholder="例: https://www.hareruyamtg.com/decks/9999999">
+          <button id="regBtn" class="small-btn">登録</button>
+        </div>
+        <div class="msg" id="regMsg"></div>
+      </div>
+
+      <div id="pane-del" style="display:none">
+        <div class="note">削除してほしいデッキのURL（または数字ID）を入力して「通報」。一定数で自動非表示。</div>
+        <div class="search-row">
+          <input type="text" id="delUrl" placeholder="例: https://www.hareruyamtg.com/decks/9999999">
+          <button id="delBtn" class="small-btn">通報</button>
+        </div>
+        <div class="msg" id="delMsg"></div>
+      </div>
+
+      <div id="pane-mine" style="display:none">
+        <div class="note">あなたが登録したデッキ一覧（最大50件）。ここから非表示にできます。</div>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <button id="reloadMine" class="small-btn">更新</button>
+        </div>
+        <div id="mineList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+  // ========= 設定 =========
+    const SUPABASE_URL  = "https://onzljxnqlrohkzsfxqbh.supabase.co"; // あなたのプロジェクトrefで固定OK
+    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemxqeG5xbHJvaGt6c2Z4cWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NzUzNTksImV4cCI6MjA3MTE1MTM1OX0.eLAP_-PtVm6tBFFCNfOVsTqEcvtZK3x3QFFNeRpxuj8";  // ←ダッシュボードからコピペ
+
+    const FN_INGEST     = `${SUPABASE_URL}/functions/v1/ingest-hareruya`;
+    const FN_REPORT     = `${SUPABASE_URL}/functions/v1/report-deck`;
+    const FN_DELETE_OWN = `${SUPABASE_URL}/functions/v1/delete-own-deck`;
+
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
+      auth: { persistSession:false, autoRefreshToken:false },
+      // PostgREST/RPC/Functions すべてに apikey + Authorization を常時付与
+      global: { headers: { apikey: SUPABASE_ANON, Authorization: "Bearer " + SUPABASE_ANON } },
+    });
+
+
+  // ========= ユーティリティ =========
+  const $ = (q)=>document.querySelector(q);
+  const sid = (localStorage.getItem("sid") || (crypto?.randomUUID?.() ? crypto.randomUUID() : String(Math.random()).slice(2)+"-"+Date.now()));
+  localStorage.setItem("sid", sid);
+
+  const toastEl = $("#toast");
+  function toast(msg){
+    if(!toastEl) return;
+    toastEl.textContent=msg;
+    toastEl.style.display="block";
+    clearTimeout(toastEl._t);
+    toastEl._t=setTimeout(()=>toastEl.style.display="none", 2000);
+  }
+
+  function toDeckId(input){
+    const s = String(input||"").trim();
+    return s.match(/decks\/(\d+)/)?.[1]
+        || s.match(/deck\.hareruyamtg\.com\/(\d+)/)?.[1]
+        || (/^\d{4,}$/.test(s) ? s : null);
+  }
+  function canonUrl(input){
+    const id = toDeckId(input);
+    return id ? `https://www.hareruyamtg.com/decks/${id}` : null;
+  }
+
+  // ===== 埋め込み：直リンク + フェイルオーバーUI（初期は非表示） =====
+  const frame = document.getElementById("deckFrame");
+  const fail  = document.getElementById("embedFail");
+  const openHareruyaLink = document.getElementById("openHareruyaLink");
+  const retryEmbed = document.getElementById("retryEmbed");
+
+  let embedWatch = null;
+  function setEmbed(inputUrl){
+    const s = String(inputUrl || "").trim();
+    const m = s.match(/decks\/(\d+)/) || s.match(/deck\.hareruyamtg\.com\/(\d+)/) || s.match(/^(\d{4,})$/);
+    const id = m ? m[1] : null;
+
+    if(fail) fail.style.display = "none";
+    clearTimeout(embedWatch);
+
+    if (!id) {
+      if(frame) frame.src = "about:blank";
+      if(fail) fail.style.display = "flex";
+      return;
+    }
+
+    const wwwUrl  = `https://www.hareruyamtg.com/decks/${id}`;
+    if(openHareruyaLink) openHareruyaLink.href = wwwUrl;
+
+    if(frame){
+      frame.removeAttribute("src");
+      frame.src = wwwUrl;
+    }
+
+    embedWatch = setTimeout(()=>{ if(fail) fail.style.display="flex"; }, 6000);
+  }
+  if(frame){
+    frame.addEventListener("load", ()=> {
+      clearTimeout(embedWatch);
+      if(fail) fail.style.display="none";
+    });
+  }
+  if(retryEmbed){
+    retryEmbed.addEventListener("click", ()=> {
+      if (currentDeck?.source_url) setEmbed(currentDeck.source_url);
+    });
+  }
+
+  // ========= 状態 =========
+  let currentDeck = null;
+  let autoNextTimer = null;
+  let labelsSub = null;
+
+  // ========= 集計 =========
+  const resultsEl = $("#results");
+  const seg2=$("#seg2"), seg3=$("#seg3"), seg4=$("#seg4");
+  const p2=$("#p2"), p3=$("#p3"), p4=$("#p4");
+  const nextBtn=$("#nextBtn");
+  const autoNextHint=$("#autoNextHint");
+
+  function renderChart(c2,c3,c4){
+    const total=Math.max(0,c2+c3+c4);
+    const per = total? [c2/total*100,c3/total*100,c4/total*100]:[0,0,0];
+    if(seg2){ seg2.style.left="0%"; seg2.style.width=`${per[0]}%`; }
+    if(seg3){ seg3.style.left=`${per[0]}%`; seg3.style.width=`${per[1]}%`; }
+    if(seg4){ seg4.style.left=`${per[0]+per[1]}%`; seg4.style.width=`${per[2]}%`; }
+    if(p2) p2.textContent=`${Math.round(per[0])}%`;
+    if(p3) p3.textContent=`${Math.round(per[1])}%`;
+    if(p4) p4.textContent=`${Math.round(per[2])}%`;
+  }
+
+  async function loadVotesAndRenderResults(forceShow=false){
+    if(!currentDeck) return;
+    const { data } = await sb.from("deck_stats").select("c2,c3,c4").eq("deck_id", currentDeck.id).maybeSingle();
+    const c2 = data?.c2||0, c3=data?.c3||0, c4=data?.c4||0;
+    renderChart(c2,c3,c4);
+    if(forceShow && resultsEl) resultsEl.style.display="flex";
+  }
+
+  // ========= URL 更新 / 直リンク =========
+  function updateUrlForDeck(row){
+    const id = toDeckId(row.source_url);
+    if(id) history.replaceState(null, "", `?id=${id}`);
+  }
+
+  async function showDeckByRow(row,{showResults=false}={}){
+  currentDeck = row;
+  setEmbed(row.source_url);
+
+  const id = toDeckId(row.source_url);
+  const titleEl=document.querySelector('[data-deck-title]');
+  if(titleEl) titleEl.textContent = row.deck_name || (id ? `Hareruya Deck #${id}` : "Hareruya Deck");
+
+  // 日付は表示しない（data-deck-date の操作自体を廃止）
+
+  const linkEl=$("#sourceLink");
+  if(linkEl) linkEl.innerHTML = `<a href="${row.source_url}" target="_blank" rel="noopener noreferrer">元ページを開く↗</a>`;
+
+  if(resultsEl) resultsEl.style.display = showResults ? "flex":"none";
+  await loadVotesAndRenderResults(showResults);
+
+  // リアルタイム購読を張り直し
+  if(labelsSub){ await sb.removeChannel(labelsSub); labelsSub=null; }
+  labelsSub = sb.channel('labels:'+row.id)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'labels', filter:`deck_id=eq.${row.id}` },
+      () => loadVotesAndRenderResults(resultsEl?.style.display==="flex"))
+    .subscribe();
+
+  updateUrlForDeck(row);
+
+  clearInterval(autoNextTimer); autoNextTimer=null;
+  if(autoNextHint) autoNextHint.textContent="";
+}
+
+  // ========= ランダム =========
+  async function loadRandomDeck(){
+    const { data, error } = await sb.rpc("random_deck");
+    if(error || !data){ toast("読み込みエラー"); return; }
+    await showDeckByRow(data,{showResults:false});
+  }
+
+  // ========= 存在確認/登録 =========
+  async function ensureDeckExists(url){
+    const { data } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
+    if(data?.id) return data;
+    const res = await fetch(FN_INGEST,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+      body: JSON.stringify({ url, session_id:sid })
+    });
+    const j = await res.json().catch(()=> ({}));
+    if(res.ok && j.ok){
+      const { data: after } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
+      if(after?.id) return after;
+    }
+    throw new Error(j?.error || "登録に失敗しました");
+  }
+
+  // ========= 投票 =========
+  function startAutoNext(){
+    let left = 10;
+    if(autoNextHint) autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+    clearInterval(autoNextTimer);
+    autoNextTimer = setInterval(()=>{
+      left--;
+      if(left<=0){
+        clearInterval(autoNextTimer); autoNextTimer=null;
+        loadRandomDeck();
+      }else{
+        if(autoNextHint) autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+      }
+    }, 1000);
+  }
+
+  document.querySelectorAll(".chip[data-vote]").forEach(el=> el.addEventListener("click", async (e)=>{
+    if(!currentDeck) return;
+    // 連打抑止
+    const btns = document.querySelectorAll(".chip[data-vote]");
+    btns.forEach(b=> (b).disabled=true);
+    try{
+      const bracket = Number(e.currentTarget.dataset.vote);
+      const { error, status } = await sb.from("labels").insert({ deck_id: currentDeck.id, session_id: sid, bracket });
+      if(error){
+        if(status===409 || /duplicate key|unique/i.test(String(error.message||""))) toast("同じデッキには1回だけ投票できます。");
+        else toast("保存エラーが発生しました。少し時間をおいてお試しください。");
+        return;
+      }
+      if(resultsEl) resultsEl.style.display="flex";
+      await loadVotesAndRenderResults(true);
+      startAutoNext();
+    } finally {
+      btns.forEach(b=> (b).disabled=false);
+    }
+  }));
+
+  // スキップ／次へ
+  const skipBtn = $("#skipBtn");
+  if(skipBtn) skipBtn.addEventListener("click", ()=> loadRandomDeck());
+  if(nextBtn) nextBtn.addEventListener("click", ()=> { clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); });
+
+  // ========= 検索 =========
+  async function doSearch(){
+    const v=$("#searchInput")?.value?.trim?.() ?? "";
+    const url = canonUrl(v);
+    if(!url){ toast("URLまたは数字IDを入力してください。"); return; }
+    try{
+      const row = await ensureDeckExists(url);
+      await showDeckByRow(row,{showResults:true});
+    } catch(e){
+      toast(String(e?.message||e));
+    }
+  }
+  const searchBtn = $("#searchBtn");
+  const searchInput = $("#searchInput");
+  if(searchBtn) searchBtn.addEventListener("click", doSearch);
+  if(searchInput) searchInput.addEventListener("keydown", e=>{ if(e.key==="Enter") doSearch(); });
+
+  // ========= 通報（削除希望） =========
+  const reportBtn = $("#reportBtn");
+  if(reportBtn) reportBtn.addEventListener("click", async ()=>{
+    if(!currentDeck) return toast("デッキが読み込まれていません");
+    try{
+      const res = await fetch(FN_REPORT,{
+        method:"POST",
+        headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+        body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, reason:"user_report_from_vote" })
+      });
+      const j = await res.json().catch(()=> ({}));
+      (res.ok && j?.ok!==false) ? toast("報告を受け付けました。ありがとうございました。") : toast("報告に失敗しました。");
+    }catch{ toast("報告に失敗しました。"); }
+  });
+
+  // ========= シート開閉 =========
+  const sheet = $("#sheet");
+  const backdrop = $("#backdrop");
+  function openSheet(){ if(sheet && backdrop){ sheet.style.display="flex"; backdrop.style.display="block"; } }
+  function closeSheet(){ if(sheet && backdrop){ sheet.style.display="none"; backdrop.style.display="none"; } }
+  const openSheetBtn = $("#openSheet");
+  const closeSheetBtn = $("#closeSheet");
+  if (openSheetBtn) openSheetBtn.addEventListener("click", openSheet);
+  if (closeSheetBtn) closeSheetBtn.addEventListener("click", closeSheet);
+  if (backdrop) backdrop.addEventListener("click", closeSheet);
+
+  // ========= タブ =========
+  const tabs = document.querySelectorAll(".tab");
+  tabs.forEach(t=> t.addEventListener("click", ()=>{
+    tabs.forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    const name=t.dataset.tab;
+    const paneReg = $("#pane-reg");
+    const paneDel = $("#pane-del");
+    const paneMine = $("#pane-mine");
+    if(paneReg) paneReg.style.display = name==="reg" ? "block":"none";
+    if(paneDel) paneDel.style.display = name==="del" ? "block":"none";
+    if(paneMine) paneMine.style.display= name==="mine"? "block":"none";
+    if(name==="mine") loadMine();
+  }));
+
+  // ========= 登録（重複は「既に登録済み」と表示）=========
+  const regBtn = $("#regBtn");
+  if(regBtn) regBtn.addEventListener("click", async ()=>{
+    const msg=$("#regMsg"); if(msg) msg.textContent="";
+    const v=$("#regUrl")?.value?.trim?.() ?? "";
+    const url = canonUrl(v);
+    if(!url){ if(msg) msg.textContent = "URL形式が正しくありません。"; return; }
+
+    if(msg) msg.textContent = "登録中...";
+
+    try{
+      const res = await fetch(FN_INGEST,{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "Authorization":"Bearer "+SUPABASE_ANON,
+          "apikey": SUPABASE_ANON
+        },
+        body: JSON.stringify({ url, session_id: sid })
+      });
+
+      let j = {};
+      try{ j = await res.json(); }catch{}
+
+      if(res.ok && j?.ok){
+        if(msg) msg.textContent = j?.duplicated ? "既に登録されています。" : "登録しました。";
+        try{
+          const row = await ensureDeckExists(url);
+          await showDeckByRow(row,{showResults:false});
+        }catch{}
+        loadMine();
+        return;
+      }
+
+      if(msg){
+        if(res.status === 401){
+          msg.textContent = "登録失敗: 認証エラー (401 Invalid JWT)。index.html の SUPABASE_ANON を確認してください。";
+        }else if(res.status === 403){
+          msg.textContent = "登録失敗: 権限エラー (403)。Edge Function のシークレット/ポリシー設定を確認してください。";
+        }else{
+          msg.textContent = `登録失敗: ${j?.error || (res.status + " " + res.statusText)}`;
+        }
+      }
+    }catch(e){
+      if(msg) msg.textContent = `登録に失敗: ${String(e?.message || e)}`;
+    }
+  });
+
+  // ========= 通報タブ =========
+  const delBtn = $("#delBtn");
+  if(delBtn) delBtn.addEventListener("click", async ()=>{
+    const msg=$("#delMsg"); if(msg) msg.textContent="";
+    const v=$("#delUrl")?.value?.trim?.() ?? "";
+    const url=canonUrl(v);
+    if(!url){ if(msg) msg.textContent="URL形式が正しくありません。"; return; }
+    const { data } = await sb.from("decks").select("id").eq("source_url", url).maybeSingle();
+    if(!data?.id){ if(msg) msg.textContent="まだ登録されていない可能性があります。"; return; }
+    try{
+      const res = await fetch(FN_REPORT,{
+        method:"POST",
+        headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+        body: JSON.stringify({ deck_id: data.id, session_id: sid, reason:"user_delete_request" })
+      });
+      const j = await res.json().catch(()=> ({}));
+      if(msg) msg.textContent = (res.ok && j?.ok!==false) ? "報告を受け付けました。ありがとうございました。" : `報告に失敗しました: ${j?.error || res.statusText}`;
+    }catch{
+      if(msg) msg.textContent="報告に失敗しました。";
+    }
+  });
+
+  // ========= 自分の登録 =========
+  const reloadMineBtn = $("#reloadMine");
+  if(reloadMineBtn) reloadMineBtn.addEventListener("click", ()=> loadMine());
+  async function loadMine(){
+    const listEl=$("#mineList");
+    if(listEl) listEl.innerHTML="読み込み中…";
+    const { data, error } = await sb.from("decks")
+      .select("id,source_url,deck_name,created_at")
+      .eq("created_by_session", sid)
+      .order("created_at",{ascending:false})
+      .limit(50);
+    if(error){ if(listEl) listEl.textContent="読み込みエラー"; return; }
+    if(!data || data.length===0){ if(listEl) listEl.textContent="まだ登録がありません。"; return; }
+    if(listEl) listEl.innerHTML="";
+    for(const d of data){
+      const id = toDeckId(d.source_url);
+      const item=document.createElement("div"); item.className="item";
+      const a=document.createElement("a"); a.href=d.source_url; a.target="_blank"; a.rel="noopener noreferrer";
+      a.textContent = d.deck_name || (id ? `Hareruya Deck #${id}` : d.source_url);
+      const del=document.createElement("button"); del.className="small-btn"; del.textContent="非表示にする";
+      del.addEventListener("click", ()=> deleteOwn(d.id, item));
+      const show=document.createElement("button"); show.className="small-btn"; show.textContent="表示";
+      show.addEventListener("click", async ()=> {
+        const row = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("id", d.id).maybeSingle();
+        if(row.data) await showDeckByRow(row.data,{showResults:false});
+        closeSheet();
+      });
+      item.append(a, show, del);
+      if(listEl) listEl.appendChild(item);
+    }
+  }
+  async function deleteOwn(deck_id, node){
+    if(!confirm("この登録を非表示にしますか？（投票/通報ログは保持されます）")) return;
+    try{
+      const res = await fetch(FN_DELETE_OWN,{
+        method:"POST",
+        headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+        body: JSON.stringify({ deck_id, session_id: sid })
+      });
+      const j = await res.json().catch(()=> ({}));
+      if(res.ok && j?.ok){
+        toast("非表示にしました");
+        node?.remove();
+        if(currentDeck?.id===deck_id) loadRandomDeck();
+      } else {
+        toast(`非表示に失敗しました: ${j?.error || res.statusText}`);
+      }
+    }catch{
+      toast("非表示に失敗しました。");
+    }
+  }
+
+  // ========= 初期表示：?id= のディープリンク優先 =========
+  async function initFromUrl(){
+    const id = new URL(location.href).searchParams.get("id");
+    if(id){
+      const url = canonUrl(id);
+      try{
+        const row = await ensureDeckExists(url);
+        await showDeckByRow(row,{showResults:true});
+        return;
+      }catch{}
+    }
+    await loadRandomDeck();
+  }
+  await initFromUrl();
+</script>
+</body>
+</html>
