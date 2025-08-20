@@ -85,6 +85,9 @@
     .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
     .hint{font-size:12px;color:var(--muted)}
 
+    /* ボタン無効化 */
+    .chip[disabled]{opacity:.6; pointer-events:none; filter:grayscale(.2)}
+
     /* シート（登録/削除/自分の登録） */
     .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none}
     .sheet{position:fixed;right:0;top:0;bottom:0;width:min(520px,100%);background:#fff;box-shadow:-10px 0 30px rgba(0,0,0,.2);display:none;flex-direction:column}
@@ -158,7 +161,7 @@
           <div class="skip-row">
             <button class="skip" id="skipBtn" title="このデッキは評価しない">回答しない</button>
           </div>
-          <div class="hint">※ 1デッキにつき1回まで</div>
+          <div class="hint">※ 同じデッキは1つだけ記録（あとから変更可能）</div>
         </div>
 
         <div class="results" id="results">
@@ -390,33 +393,75 @@
       throw new Error(j?.error || "登録に失敗しました");
     }
 
-    // ========= 投票 =========
-    document.querySelectorAll(".chip[data-vote]").forEach(el=> el.addEventListener("click", async (e)=>{
-      if(!currentDeck) return;
-      const bracket = Number(e.currentTarget.dataset.vote);
-      const { error, status } = await sb.from("labels").insert({ deck_id: currentDeck.id, session_id: sid, bracket });
-      if(error){
-        if(status===409 || /duplicate key|unique/i.test(String(error.message||""))) toast("同じデッキには1回だけ投票できます。");
-        else toast("保存エラーが発生しました。少し時間をおいてお試しください。");
-        return;
-      }
-      resultsEl.style.display="flex";
-      await loadVotesAndRenderResults(true);
+    // ========= 投票（上書き可・連打ガード・軽いリトライ） =========
+const voteChips = Array.from(document.querySelectorAll(".chip[data-vote]"));
+let voting = false;
 
-      // 10秒カウントダウン → 自動遷移
-      let left = 10;
-      autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-      clearInterval(autoNextTimer);
-      autoNextTimer = setInterval(()=>{
-        left--;
-        if(left<=0){
-          clearInterval(autoNextTimer); autoNextTimer=null;
-          loadRandomDeck();
-        }else{
-          autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-        }
-      }, 1000);
-    }));
+function setVoting(b){
+  voting = b;
+  voteChips.forEach(btn => btn.disabled = b);
+}
+
+async function postVoteOnce(bracket){
+  const res = await fetch(FN_VOTE, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + SUPABASE_ANON,
+      "apikey": SUPABASE_ANON
+    },
+    body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, bracket })
+  });
+  let ok = res.ok;
+  try {
+    const j = await res.clone().json();
+    if (j && j.ok === false) ok = false;
+  } catch(_){ /* JSONでなくても ok 判定はres.okに任せる */ }
+  return { ok, status: res.status };
+}
+
+async function postVoteWithRetry(bracket){
+  // 2回まで試行（429/5xx/409のみリトライ）
+  const retriable = new Set([429, 409, 500, 502, 503, 504]);
+  for (let i=0; i<2; i++){
+    const { ok, status } = await postVoteOnce(bracket);
+    if (ok) return true;
+    if (!retriable.has(status)) return false;
+    await new Promise(r=>setTimeout(r, 250)); // 短い待機
+  }
+  return false;
+}
+
+document.querySelectorAll(".chip[data-vote]").forEach(el => el.addEventListener("click", async (e)=>{
+  if (!currentDeck || voting) return;
+  const bracket = Number(e.currentTarget.dataset.vote);
+
+  setVoting(true);
+  try{
+    const done = await postVoteWithRetry(bracket);
+    if (!done){
+      toast("保存エラーが発生しました。少し時間をおいてお試しください。");
+      return;
+    }
+
+    // 集計表示＆自動遷移（10秒）
+    resultsEl.style.display="flex";
+    await loadVotesAndRenderResults(true);
+
+    let left = 10;
+    autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+    clearInterval(autoNextTimer);
+    autoNextTimer = setInterval(()=>{
+      left--;
+      if(left<=0){ clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); }
+      else autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+    }, 1000);
+  }catch{
+    toast("保存エラーが発生しました。");
+  }finally{
+    setVoting(false);
+  }
+}));
 
     // スキップ／次へ
     $("#skipBtn").addEventListener("click", ()=> loadRandomDeck());
