@@ -13,7 +13,7 @@
   <style>
     :root{
       --bg:#fff; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb;
-      --brand:#d62828; --c2:#4E9CFF; --c3:#FFC857; --c4:#FF6B6B;
+      --brand:#d62828; --c1:#34D399; --c2:#4E9CFF; --c3:#FFC857; --c4:#FF6B6B;
       --radius:14px;
     }
     *{box-sizing:border-box} html,body{height:100%}
@@ -56,8 +56,8 @@
     .prompt{font-weight:800;letter-spacing:.01em;font-size:16px}
     @media(min-width:1000px){ .prompt{font-size:20px} }
 
-    /* 3ボタン（横幅ピッタリ） */
-    .vote-row{display:grid; gap:10px; grid-template-columns:1fr 1fr 1fr; margin-top:10px}
+    /* 4ボタン（横幅ピッタリ） */
+    .vote-row{display:grid; gap:10px; grid-template-columns:repeat(4,1fr); margin-top:10px}
     .chip{
       width:100%; height:64px; font-size:22px; font-weight:800;
       border:1px solid var(--border); border-radius:12px; background:#f4f4f5;
@@ -65,21 +65,11 @@
     }
     .chip:hover{background:#e9e9eb}
     .chip:active{transform:scale(.98)}
+    .b1{background:color-mix(in srgb, var(--c1) 16%, white)}
     .b2{background:color-mix(in srgb, var(--c2) 16%, white)}
     .b3{background:color-mix(in srgb, var(--c3) 20%, white)}
     .b4{background:color-mix(in srgb, var(--c4) 20%, white)}
     @media(min-width:1000px){ .chip{height:72px; font-size:24px} }
-
-    /* すでに投票済み（自分の選択）を強調：赤いアウトラインのみ */
-    .chip.selected{
-      position:relative;
-      outline:2px solid var(--brand);
-      box-shadow:0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent) inset;
-      transform: translateY(-1px);
-    }
-
-    /* 連打ガード（すでに入っていればそのままでOK） */
-    .chip[disabled]{opacity:.6; pointer-events:none; filter:grayscale(.2)}
 
     /* 回答しない（改行して控えめ） */
     .skip-row{margin-top:6px}
@@ -89,11 +79,14 @@
     .results{display:none;flex-direction:column;gap:8px}
     .bar{position:relative;height:18px;border-radius:999px;background:#f3f4f6;border:1px solid #e5e7eb;overflow:hidden}
     .seg{position:absolute;top:0;bottom:0}
-    .seg.b2{background:var(--c2)} .seg.b3{background:var(--c3)} .seg.b4{background:var(--c4)}
+    .seg.b1{background:var(--c1)} .seg.b2{background:var(--c2)} .seg.b3{background:var(--c3)} .seg.b4{background:var(--c4)}
     .legend{display:flex;gap:10px;flex-wrap:wrap;color:#374151;font-size:12px}
     .legend span{display:inline-flex;align-items:center;gap:6px}
     .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
     .hint{font-size:12px;color:var(--muted)}
+
+    /* ボタン無効化 */
+    .chip[disabled]{opacity:.6; pointer-events:none; filter:grayscale(.2)}
 
     /* シート（登録/削除/自分の登録） */
     .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none}
@@ -129,7 +122,6 @@
         <div class="site">みんなでブラケット診断</div>
         <div class="deck-meta">
           <strong data-deck-title>Hareruya Deck</strong>
-          <span data-deck-date style="display:none">0000/00/00</span>
           <span class="hint" id="sourceLink" style="margin-left:6px"></span>
         </div>
       </div>
@@ -138,7 +130,7 @@
 
     <div class="grid">
       <div class="embed-wrap card">
-        <!-- 直リンク埋め込み（/decks/<id>) + フェイルオーバーUI -->
+        <!-- 埋め込みは /decks/<id> をそのままiframe -->
         <iframe id="deckFrame" title="Hareruya Deck"
                 sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation-by-user-activation"
                 loading="eager"></iframe>
@@ -161,6 +153,7 @@
         <div class="vote-block">
           <div class="prompt">このデッキのブラケットは？</div>
           <div class="vote-row">
+            <button class="chip b1" data-vote="1">１</button>
             <button class="chip b2" data-vote="2">２</button>
             <button class="chip b3" data-vote="3">３</button>
             <button class="chip b4" data-vote="4">４</button>
@@ -168,16 +161,18 @@
           <div class="skip-row">
             <button class="skip" id="skipBtn" title="このデッキは評価しない">回答しない</button>
           </div>
-          <div class="hint">※ 同じデッキは1つだけ記録（あとから変更できます）</div>
+          <div class="hint">※ 同じデッキは1つだけ記録（あとから変更可能）</div>
         </div>
 
         <div class="results" id="results">
           <div class="bar" aria-label="集計バー">
+            <div class="seg b1" id="seg1" style="left:0;width:0%"></div>
             <div class="seg b2" id="seg2" style="left:0;width:0%"></div>
             <div class="seg b3" id="seg3" style="left:0;width:0%"></div>
             <div class="seg b4" id="seg4" style="left:0;width:0%"></div>
           </div>
           <div class="legend">
+            <span><i class="dot" style="background:var(--c1)"></i> ブラケット１ <b id="p1">0%</b></span>
             <span><i class="dot" style="background:var(--c2)"></i> ブラケット２ <b id="p2">0%</b></span>
             <span><i class="dot" style="background:var(--c3)"></i> ブラケット３ <b id="p3">0%</b></span>
             <span><i class="dot" style="background:var(--c4)"></i> ブラケット４ <b id="p4">0%</b></span>
@@ -189,7 +184,6 @@
         </div>
 
         <div style="display:flex;gap:8px;margin-top:8px">
-          <button id="shareBtn" class="small-btn">このデッキをシェア</button>
           <button id="reportBtn" class="small-btn subtle">このデッキに削除希望を出す</button>
         </div>
       </div>
@@ -264,12 +258,11 @@
 
     // ========= 設定 =========
     const SUPABASE_URL  = "https://onzljxnqlrohkzsfxqbh.supabase.co"; // 固定
-    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemxqeG5xbHJvaGt6c2Z4cWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NzUzNTksImV4cCI6MjA3MTE1MTM1OX0.eLAP_-PtVm6tBFFCNfOVsTqEcvtZK3x3QFFNeRpxuj8";              // ←差し替え
+    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemxqeG5xbHJvaGt6c2Z4cWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NzUzNTksImV4cCI6MjA3MTE1MTM1OX0.eLAP_-PtVm6tBFFCNfOVsTqEcvtZK3x3QFFNeRpxuj8";              // ←あなたのAnon Keyに差し替え
     const FN_INGEST     = `${SUPABASE_URL}/functions/v1/ingest-hareruya`;
     const FN_REPORT     = `${SUPABASE_URL}/functions/v1/report-deck`;
     const FN_DELETE_OWN = `${SUPABASE_URL}/functions/v1/delete-own-deck`;
-    const FN_VOTE       = `${SUPABASE_URL}/functions/v1/vote`;
-    const APP_URL       = `${location.origin}${location.pathname}`;
+    const FN_VOTE      = `${SUPABASE_URL}/functions/v1/vote`;
 
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
       auth: { persistSession:false, autoRefreshToken:false },
@@ -313,10 +306,10 @@
       frame.src = wwwUrl;
 
       clearTimeout(embedWatch);
-      // 6秒待ってダメならオーバーレイ表示（クロスオリジンのため単純タイムアウト検知）
+      // 6秒待ってダメならオーバーレイ表示
       embedWatch = setTimeout(()=>{ fail.style.display="flex"; }, 6000);
     }
-    frame.addEventListener("load", ()=> { clearTimeout(embedWatch); /* 読み込み完了（中身はサイト依存） */ });
+    frame.addEventListener("load", ()=> { clearTimeout(embedWatch); });
     retryEmbed.addEventListener("click", ()=> {
       if (currentDeck?.source_url) setEmbed(currentDeck.source_url);
     });
@@ -327,68 +320,39 @@
 
     // ========= 集計 =========
     const resultsEl = $("#results");
-    const seg2=$("#seg2"), seg3=$("#seg3"), seg4=$("#seg4");
-    const p2=$("#p2"), p3=$("#p3"), p4=$("#p4");
+    const seg1=$("#seg1"), seg2=$("#seg2"), seg3=$("#seg3"), seg4=$("#seg4");
+    const p1=$("#p1"), p2=$("#p2"), p3=$("#p3"), p4=$("#p4");
     const nextBtn=$("#nextBtn");
     const autoNextHint=$("#autoNextHint");
 
-    function renderChart(c2,c3,c4){
-      const total=Math.max(0,c2+c3+c4);
-      const per = total? [c2/total*100,c3/total*100,c4/total*100]:[0,0,0];
-      seg2.style.left="0%"; seg2.style.width=`${per[0]}%`;
-      seg3.style.left=`${per[0]}%`; seg3.style.width=`${per[1]}%`;
-      seg4.style.left=`${per[0]+per[1]}%`; seg4.style.width=`${per[2]}%`;
-      p2.textContent=`${Math.round(per[0])}%`;
-      p3.textContent=`${Math.round(per[1])}%`;
-      p4.textContent=`${Math.round(per[2])}%`;
+    function renderChart(c1,c2,c3,c4){
+      const total=Math.max(0,c1+c2+c3+c4);
+      const per = total? [c1/total*100,c2/total*100,c3/total*100,c4/total*100]:[0,0,0,0];
+      seg1.style.left="0%"; seg1.style.width=`${per[0]}%`;
+      seg2.style.left=`${per[0]}%`; seg2.style.width=`${per[1]}%`;
+      seg3.style.left=`${per[0]+per[1]}%`; seg3.style.width=`${per[2]}%`;
+      seg4.style.left=`${per[0]+per[1]+per[2]}%`; seg4.style.width=`${per[3]}%`;
+      p1.textContent=`${Math.round(per[0])}%`;
+      p2.textContent=`${Math.round(per[1])}%`;
+      p3.textContent=`${Math.round(per[2])}%`;
+      p4.textContent=`${Math.round(per[3])}%`;
     }
     async function loadVotesAndRenderResults(forceShow=false){
       if(!currentDeck) return;
       const { data } = await sb.from("labels").select("bracket").eq("deck_id", currentDeck.id).limit(10000);
-      let c2=0,c3=0,c4=0;
-      for(const r of (data||[])){ if(r.bracket===2)c2++; else if(r.bracket===3)c3++; else if(r.bracket===4)c4++; }
-      renderChart(c2,c3,c4); if(forceShow) resultsEl.style.display="flex";
-    }
-
-    // === 自分の投票ハイライト ===
-    const voteChips = Array.from(document.querySelectorAll(".chip[data-vote]"));
-    function markMyVote(bracket){
-      voteChips.forEach(btn=>{
-        const isSel = Number(btn.dataset.vote) === Number(bracket);
-        btn.classList.toggle("selected", !!bracket && isSel);
-        btn.setAttribute("aria-pressed", String(!!bracket && isSel));
-      });
-    }
-    async function loadMyVote(){
-      if(!currentDeck) { markMyVote(null); return null; }
-      const { data } = await sb.from("labels")
-        .select("bracket")
-        .eq("deck_id", currentDeck.id)
-        .eq("session_id", sid)
-        .maybeSingle();
-      const b = data?.bracket ?? null;
-      markMyVote(b);
-      return b;
+      let c1=0,c2=0,c3=0,c4=0;
+      for(const r of (data||[])){ if(r.bracket===1)c1++; else if(r.bracket===2)c2++; else if(r.bracket===3)c3++; else if(r.bracket===4)c4++; }
+      renderChart(c1,c2,c3,c4); if(forceShow) resultsEl.style.display="flex";
     }
 
     // ========= 表示 =========
     async function showDeckByRow(row,{showResults=false}={}){
       currentDeck = row;
-
-      // 現在の選択表示をクリア
-      markMyVote(null);
-
       setEmbed(row.source_url);
 
       const id = toDeckId(row.source_url);
-      // URLに ?deck=<id> を反映（シェアしやすく）
-      if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
-
       const titleEl=document.querySelector('[data-deck-title]');
       titleEl.textContent = row.deck_name || (id ? `Hareruya Deck #${id}` : "Hareruya Deck");
-
-      const dateEl=document.querySelector('[data-deck-date]');
-      dateEl.style.display='none'; // ヘッダー日付は出さない
 
       const linkEl=$("#sourceLink");
       linkEl.innerHTML = `<a href="${row.source_url}" target="_blank" rel="noopener noreferrer">元ページを開く↗</a>`;
@@ -396,19 +360,20 @@
       resultsEl.style.display = showResults ? "flex":"none";
       await loadVotesAndRenderResults(showResults);
 
-      // このデッキに対する自分の投票を取得してハイライト
-      await loadMyVote();
-
       clearInterval(autoNextTimer); autoNextTimer=null; autoNextHint.textContent="";
     }
 
-    // ========= ランダム（未回答のみ） =========
-    async function loadRandomDeck(){
+   // ========= ランダム（未回答のみ） =========
+      async function loadRandomDeck(){
+  // RPC: random_deck_for_session を呼ぶ（未回答の中から1件ランダム）
       const { data, error } = await sb.rpc("random_deck_for_session", { p_session: sid });
       if (error) { toast("読み込みエラー"); return; }
+
       const row = (Array.isArray(data) ? data[0] : null);
       if (!row) { toast("未回答のデッキがありません"); return; }
-      await showDeckByRow(row,{showResults:false});
+
+  // row は { id, source_url, deck_name, registered_at } だけなので、そのまま表示に必要な形へ
+      await showDeckByRow(row, { showResults:false });
     }
 
     // ========= 存在確認/登録 =========
@@ -428,96 +393,88 @@
       throw new Error(j?.error || "登録に失敗しました");
     }
 
-    // ========= 投票（上書き可・連打ガード・軽いリトライ＋選択表示） =========
-    let voting = false;
-    function setVoting(b){ voting=b; voteChips.forEach(btn => btn.disabled = b); }
+    // ========= 投票（上書き可・連打ガード・軽いリトライ） =========
+const voteChips = Array.from(document.querySelectorAll(".chip[data-vote]"));
+let voting = false;
 
-    async function postVoteOnce(bracket){
-      const res = await fetch(FN_VOTE, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + SUPABASE_ANON,
-          "apikey": SUPABASE_ANON
-        },
-        body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, bracket })
-      });
-      let ok = res.ok;
-      try {
-        const j = await res.clone().json();
-        if (j && j.ok === false) ok = false;
-      } catch(_){}
-      return { ok, status: res.status };
+function setVoting(b){
+  voting = b;
+  voteChips.forEach(btn => btn.disabled = b);
+}
+
+async function postVoteOnce(bracket){
+  const res = await fetch(FN_VOTE, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + SUPABASE_ANON,
+      "apikey": SUPABASE_ANON
+    },
+    body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, bracket })
+  });
+  let ok = res.ok;
+  try {
+    const j = await res.clone().json();
+    if (j && j.ok === false) ok = false;
+  } catch(_){ /* JSONでなくても ok 判定はres.okに任せる */ }
+  return { ok, status: res.status };
+}
+
+async function postVoteWithRetry(bracket){
+  // 2回まで試行（429/5xx/409のみリトライ）
+  const retriable = new Set([429, 409, 500, 502, 503, 504]);
+  for (let i=0; i<2; i++){
+    const { ok, status } = await postVoteOnce(bracket);
+    if (ok) return true;
+    if (!retriable.has(status)) return false;
+    await new Promise(r=>setTimeout(r, 250)); // 短い待機
+  }
+  return false;
+}
+
+document.querySelectorAll(".chip[data-vote]").forEach(el => el.addEventListener("click", async (e)=>{
+  if (!currentDeck || voting) return;
+  const bracket = Number(e.currentTarget.dataset.vote);
+
+  setVoting(true);
+  try{
+    const done = await postVoteWithRetry(bracket);
+    if (!done){
+      toast("保存エラーが発生しました。少し時間をおいてお試しください。");
+      return;
     }
-    async function postVoteWithRetry(bracket){
-      const retriable = new Set([429, 409, 500, 502, 503, 504]);
-      for (let i=0; i<2; i++){
-        const { ok, status } = await postVoteOnce(bracket);
-        if (ok) return true;
-        if (!retriable.has(status)) return false;
-        await new Promise(r=>setTimeout(r, 250));
-      }
-      return false;
-    }
-    document.querySelectorAll(".chip[data-vote]").forEach(el => el.addEventListener("click", async (e)=>{
-      if (!currentDeck || voting) return;
-      const bracket = Number(e.currentTarget.dataset.vote);
 
-      setVoting(true);
-      try{
-        const done = await postVoteWithRetry(bracket);
-        if (!done){
-          toast("保存エラーが発生しました。少し時間をおいてお試しください。");
-          return;
-        }
+    // 集計表示＆自動遷移（10秒）
+    resultsEl.style.display="flex";
+    await loadVotesAndRenderResults(true);
 
-        // 自分の選択を即ハイライト
-        markMyVote(bracket);
-
-        // 集計表示＆自動遷移（10秒）
-        resultsEl.style.display="flex";
-        await loadVotesAndRenderResults(true);
-
-        let left = 10;
-        autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-        clearInterval(autoNextTimer);
-        autoNextTimer = setInterval(()=>{
-          left--;
-          if(left<=0){ clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); }
-          else autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-        }, 1000);
-      }catch{
-        toast("保存エラーが発生しました。");
-      }finally{
-        setVoting(false);
-      }
-    }));
+    let left = 10;
+    autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+    clearInterval(autoNextTimer);
+    autoNextTimer = setInterval(()=>{
+      left--;
+      if(left<=0){ clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); }
+      else autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+    }, 1000);
+  }catch{
+    toast("保存エラーが発生しました。");
+  }finally{
+    setVoting(false);
+  }
+}));
 
     // スキップ／次へ
     $("#skipBtn").addEventListener("click", ()=> loadRandomDeck());
     nextBtn.addEventListener("click", ()=> { clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); });
 
-    // ========= 共有（Xに新規タブだけ開く版） =========
-      function currentDeckLink(){
-        const id = currentDeck ? toDeckId(currentDeck.source_url) : null;
-        return id ? `${APP_URL}?deck=${id}` : APP_URL;
-      }
-
-      function shareCurrentDeck(){
-        const url = currentDeckLink();
-        const text = `このデッキのブラケットは？\n${url}\n#みんなでブラケット診断`;
-
-        // 新規タブのみ開く（現在ページは絶対に遷移しない）
-        const tw = new URL("https://x.com/intent/tweet");
-        tw.searchParams.set("text", text);
-        const w = window.open(tw.toString(), "_blank", "noopener,noreferrer");
-
-        // ポップアップブロック時もページ遷移はしない
-        if (!w) toast("ブラウザにポップアップをブロックされました。Xの投稿を許可してください。");
-      }
-
-      // クリックで起動
-      document.getElementById("shareBtn").addEventListener("click", shareCurrentDeck);
+    // ========= 検索 =========
+    async function doSearch(){
+      const v=$("#searchInput").value.trim(); const url = canonUrl(v);
+      if(!url){ toast("URLまたは数字IDを入力してください。"); return; }
+      try{ const row = await ensureDeckExists(url); await showDeckByRow(row,{showResults:true}); } catch(e){ toast(String(e.message||e)); }
+    }
+    $("#searchBtn").addEventListener("click", doSearch);
+    $("#searchInput").addEventListener("keydown", e=>{ if(e.key==="Enter") doSearch(); });
 
     // ========= 通報（削除希望） =========
     $("#reportBtn").addEventListener("click", async ()=>{
@@ -627,23 +584,8 @@
       }catch{ toast("削除に失敗しました。"); }
     }
 
-    // ======= 起動時：?deck= があればそのデッキ、なければ未回答ランダム =======
-    const paramDeck = new URLSearchParams(location.search).get("deck");
-    if (paramDeck) {
-      const url = canonUrl(paramDeck);
-      if (url) {
-        try {
-          const row = await ensureDeckExists(url);
-          await showDeckByRow(row, { showResults: true });
-        } catch {
-          await loadRandomDeck();
-        }
-      } else {
-        await loadRandomDeck();
-      }
-    } else {
-      await loadRandomDeck();
-    }
+    // 初期表示：ランダム1件
+    await loadRandomDeck();
   </script>
 </body>
 </html>
