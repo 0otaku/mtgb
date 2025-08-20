@@ -85,8 +85,23 @@
     .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
     .hint{font-size:12px;color:var(--muted)}
 
-    /* ボタン無効化 */
-    .chip[disabled]{opacity:.6; pointer-events:none; filter:grayscale(.2)}
+    /* すでに投票済み（自分の選択）を強調 */
+      .chip.selected{
+      position:relative;
+      outline:2px solid var(--brand);
+      box-shadow:0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent) inset;
+      transform: translateY(-1px);
+      }
+      .chip.selected::after{
+      content:"✓";
+      position:absolute;
+      right:10px;
+      top:8px;
+      font-size:16px;
+      font-weight:800;
+      }
+    /* 連打ガードの見た目（前パッチで追加済みならスキップOK） */
+     .chip[disabled]{opacity:.6; pointer-events:none; filter:grayscale(.2)}
 
     /* シート（登録/削除/自分の登録） */
     .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none}
@@ -346,22 +361,32 @@
     }
 
     // ========= 表示 =========
-    async function showDeckByRow(row,{showResults=false}={}){
-      currentDeck = row;
-      setEmbed(row.source_url);
+      async function showDeckByRow(row,{showResults=false}={}){
+        currentDeck = row;
 
-      const id = toDeckId(row.source_url);
-      const titleEl=document.querySelector('[data-deck-title]');
-      titleEl.textContent = row.deck_name || (id ? `Hareruya Deck #${id}` : "Hareruya Deck");
+        // ★前回の選択表示をクリア
+        markMyVote(null);
 
-      const linkEl=$("#sourceLink");
-      linkEl.innerHTML = `<a href="${row.source_url}" target="_blank" rel="noopener noreferrer">元ページを開く↗</a>`;
+        setEmbed(row.source_url);
 
-      resultsEl.style.display = showResults ? "flex":"none";
-      await loadVotesAndRenderResults(showResults);
+        const id = toDeckId(row.source_url);
+        const titleEl=document.querySelector('[data-deck-title]');
+        titleEl.textContent = row.deck_name || (id ? `Hareruya Deck #${id}` : "Hareruya Deck");
 
-      clearInterval(autoNextTimer); autoNextTimer=null; autoNextHint.textContent="";
-    }
+        const dateEl=document.querySelector('[data-deck-date]');
+        if(row.registered_at){ dateEl.textContent=String(row.registered_at).replaceAll('-','/'); dateEl.style.display='none'; } else dateEl.style.display='none';
+
+        const linkEl=$("#sourceLink");
+        linkEl.innerHTML = `<a href="${row.source_url}" target="_blank" rel="noopener noreferrer">元ページを開く↗</a>`;
+
+        resultsEl.style.display = showResults ? "flex":"none";
+        await loadVotesAndRenderResults(showResults);
+
+        // ★このデッキに対する自分の投票を取得してハイライト
+        await loadMyVote();
+
+        clearInterval(autoNextTimer); autoNextTimer=null; autoNextHint.textContent="";
+      }
 
    // ========= ランダム（未回答のみ） =========
       async function loadRandomDeck(){
@@ -393,56 +418,101 @@
       throw new Error(j?.error || "登録に失敗しました");
     }
 
-    // ========= 投票（上書き可・連打ガード・軽いリトライ） =========
-const voteChips = Array.from(document.querySelectorAll(".chip[data-vote]"));
-let voting = false;
 
-function setVoting(b){
-  voting = b;
-  voteChips.forEach(btn => btn.disabled = b);
-}
+    // === 自分の投票ハイライト ===
+      const voteChips = Array.from(document.querySelectorAll(".chip[data-vote]"));
 
-async function postVoteOnce(bracket){
-  const res = await fetch(FN_VOTE, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + SUPABASE_ANON,
-      "apikey": SUPABASE_ANON
-    },
-    body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, bracket })
-  });
-  let ok = res.ok;
-  try {
-    const j = await res.clone().json();
-    if (j && j.ok === false) ok = false;
-  } catch(_){ /* JSONでなくても ok 判定はres.okに任せる */ }
-  return { ok, status: res.status };
-}
+      function markMyVote(bracket){
+        voteChips.forEach(btn=>{
+          const isSel = Number(btn.dataset.vote) === Number(bracket);
+          btn.classList.toggle("selected", !!bracket && isSel);
+          btn.setAttribute("aria-pressed", String(!!bracket && isSel));
+        });
+      }
 
-async function postVoteWithRetry(bracket){
-  // 2回まで試行（429/5xx/409のみリトライ）
-  const retriable = new Set([429, 409, 500, 502, 503, 504]);
-  for (let i=0; i<2; i++){
-    const { ok, status } = await postVoteOnce(bracket);
-    if (ok) return true;
-    if (!retriable.has(status)) return false;
-    await new Promise(r=>setTimeout(r, 250)); // 短い待機
-  }
-  return false;
-}
+      async function loadMyVote(){
+        if(!currentDeck) { markMyVote(null); return null; }
+        const { data } = await sb.from("labels")
+          .select("bracket")
+          .eq("deck_id", currentDeck.id)
+          .eq("session_id", sid)
+          .maybeSingle();
+        const b = data?.bracket ?? null;
+        markMyVote(b);
+        return b;
+      }
 
-document.querySelectorAll(".chip[data-vote]").forEach(el => el.addEventListener("click", async (e)=>{
-  if (!currentDeck || voting) return;
-  const bracket = Number(e.currentTarget.dataset.vote);
+   // ========= 投票（上書き可・連打ガード・軽いリトライ＋選択表示） =========
+      let voting = false;
 
-  setVoting(true);
-  try{
-    const done = await postVoteWithRetry(bracket);
-    if (!done){
-      toast("保存エラーが発生しました。少し時間をおいてお試しください。");
-      return;
-    }
+      function setVoting(b){
+        voting = b;
+        voteChips.forEach(btn => btn.disabled = b);
+      }
+
+      async function postVoteOnce(bracket){
+        const res = await fetch(FN_VOTE, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + SUPABASE_ANON,
+            "apikey": SUPABASE_ANON
+          },
+          body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, bracket })
+        });
+        let ok = res.ok;
+        try {
+          const j = await res.clone().json();
+          if (j && j.ok === false) ok = false;
+        } catch(_){}
+        return { ok, status: res.status };
+      }
+
+      async function postVoteWithRetry(bracket){
+        const retriable = new Set([429, 409, 500, 502, 503, 504]);
+        for (let i=0; i<2; i++){
+          const { ok, status } = await postVoteOnce(bracket);
+          if (ok) return true;
+          if (!retriable.has(status)) return false;
+          await new Promise(r=>setTimeout(r, 250));
+        }
+        return false;
+      }
+
+      document.querySelectorAll(".chip[data-vote]").forEach(el => el.addEventListener("click", async (e)=>{
+        if (!currentDeck || voting) return;
+        const bracket = Number(e.currentTarget.dataset.vote);
+
+        setVoting(true);
+        try{
+          const done = await postVoteWithRetry(bracket);
+          if (!done){
+            toast("保存エラーが発生しました。少し時間をおいてお試しください。");
+            return;
+          }
+
+          // ★ここで自分の選択を即ハイライト
+          markMyVote(bracket);
+
+          // 集計表示＆自動遷移（10秒）
+          resultsEl.style.display="flex";
+          await loadVotesAndRenderResults(true);
+
+          let left = 10;
+          autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+          clearInterval(autoNextTimer);
+          autoNextTimer = setInterval(()=>{
+            left--;
+            if(left<=0){ clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); }
+            else autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+          }, 1000);
+        }catch{
+          toast("保存エラーが発生しました。");
+        }finally{
+          setVoting(false);
+        }
+      }));
+
 
     // 集計表示＆自動遷移（10秒）
     resultsEl.style.display="flex";
