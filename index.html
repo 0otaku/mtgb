@@ -87,12 +87,12 @@
 
     /* 集計（一本棒の割合） */
     .results{display:none;flex-direction:column;gap:8px}
-    .bar{position:relative;height:18px;border-radius:999px;background:#f3f4f6;border:1px solid #e5e7eb;overflow:hidden}
+    .bar{position:relative;height:28px;border-radius:4px;background:#f3f4f6;border:1px solid #e5e7eb;overflow:hidden}
     .seg{position:absolute;top:0;bottom:0}
     .seg.b1{background:var(--c1)} .seg.b2{background:var(--c2)} .seg.b3{background:var(--c3)} .seg.b4{background:var(--c4)}
-    .legend{display:flex;gap:10px;flex-wrap:wrap;color:#374151;font-size:12px}
+    .legend{display:flex;gap:10px;flex-wrap:wrap;color:#374151;font-size:13px}
     .legend span{display:inline-flex;align-items:center;gap:6px}
-    .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+    .dot{width:12px;height:12px;border-radius:999px;display:inline-block}
     .hint{font-size:12px;color:var(--muted)}
 
     /* シート（登録/削除/自分の登録） */
@@ -178,12 +178,12 @@
             <div class="seg b3" id="seg3" style="left:0;width:0%"></div>
             <div class="seg b4" id="seg4" style="left:0;width:0%"></div>
           </div>
-          <div class="legend">
-            <span><i class="dot" style="background:var(--c1)"></i> ブラケット１ <b id="p1">0%</b></span>
-            <span><i class="dot" style="background:var(--c2)"></i> ブラケット２ <b id="p2">0%</b></span>
-            <span><i class="dot" style="background:var(--c3)"></i> ブラケット３ <b id="p3">0%</b></span>
-            <span><i class="dot" style="background:var(--c4)"></i> ブラケット４ <b id="p4">0%</b></span>
-          </div>
+            <div class="legend">
+              <span><i class="dot" style="background:var(--c1)"></i> 1 <b id="p1">0%</b></span>
+              <span><i class="dot" style="background:var(--c2)"></i> 2 <b id="p2">0%</b></span>
+              <span><i class="dot" style="background:var(--c3)"></i> 3 <b id="p3">0%</b></span>
+              <span><i class="dot" style="background:var(--c4)"></i> 4 <b id="p4">0%</b></span>
+            </div>
           <div style="display:flex;gap:8px;margin-top:2px">
             <button id="nextBtn" class="small-btn">次のデッキへ</button>
             <span class="hint" id="autoNextHint"></span>
