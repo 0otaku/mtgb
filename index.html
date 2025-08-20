@@ -158,7 +158,7 @@
           <div class="skip-row">
             <button class="skip" id="skipBtn" title="このデッキは評価しない">回答しない</button>
           </div>
-          <div class="hint">※ 1デッキにつき1回まで</div>
+          <div class="hint">※ 同じデッキは1つだけ記録（あとから変更可能）</div>
         </div>
 
         <div class="results" id="results">
@@ -259,6 +259,7 @@
     const FN_INGEST     = `${SUPABASE_URL}/functions/v1/ingest-hareruya`;
     const FN_REPORT     = `${SUPABASE_URL}/functions/v1/report-deck`;
     const FN_DELETE_OWN = `${SUPABASE_URL}/functions/v1/delete-own-deck`;
+    const FN_VOTE      = `${SUPABASE_URL}/functions/v1/vote`;
 
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
       auth: { persistSession:false, autoRefreshToken:false },
@@ -359,14 +360,17 @@
       clearInterval(autoNextTimer); autoNextTimer=null; autoNextHint.textContent="";
     }
 
-    // ========= ランダム =========
-    async function loadRandomDeck(){
-      const sel = await sb.from("decks").select("id,source_url,deck_name,registered_at",{count:"exact",head:true});
-      const total = sel.count||0; if(total===0){ toast("登録されたデッキがありません"); return; }
-      const offset = Math.floor(Math.random()*total);
-      const { data } = await sb.from("decks").select("id,source_url,deck_name,registered_at").range(offset,offset);
-      if(!data?.[0]){ toast("読み込みエラー"); return; }
-      await showDeckByRow(data[0],{showResults:false});
+   // ========= ランダム（未回答のみ） =========
+      async function loadRandomDeck(){
+  // RPC: random_deck_for_session を呼ぶ（未回答の中から1件ランダム）
+      const { data, error } = await sb.rpc("random_deck_for_session", { p_session: sid });
+      if (error) { toast("読み込みエラー"); return; }
+
+      const row = (Array.isArray(data) ? data[0] : null);
+      if (!row) { toast("未回答のデッキがありません"); return; }
+
+  // row は { id, source_url, deck_name, registered_at } だけなので、そのまま表示に必要な形へ
+      await showDeckByRow(row, { showResults:false });
     }
 
     // ========= 存在確認/登録 =========
@@ -386,33 +390,43 @@
       throw new Error(j?.error || "登録に失敗しました");
     }
 
-    // ========= 投票 =========
-    document.querySelectorAll(".chip[data-vote]").forEach(el=> el.addEventListener("click", async (e)=>{
-      if(!currentDeck) return;
-      const bracket = Number(e.currentTarget.dataset.vote);
-      const { error, status } = await sb.from("labels").insert({ deck_id: currentDeck.id, session_id: sid, bracket });
-      if(error){
-        if(status===409 || /duplicate key|unique/i.test(String(error.message||""))) toast("同じデッキには1回だけ投票できます。");
-        else toast("保存エラーが発生しました。少し時間をおいてお試しください。");
-        return;
-      }
-      resultsEl.style.display="flex";
-      await loadVotesAndRenderResults(true);
+    // ========= 投票（上書き可能） =========
+    document.querySelectorAll(".chip[data-vote]").forEach(el => el.addEventListener("click", async (e)=>{
+    if(!currentDeck) return;
+    const bracket = Number(e.currentTarget.dataset.vote);
 
-      // 10秒カウントダウン → 自動遷移
-      let left = 10;
-      autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-      clearInterval(autoNextTimer);
-      autoNextTimer = setInterval(()=>{
-        left--;
-        if(left<=0){
-          clearInterval(autoNextTimer); autoNextTimer=null;
-          loadRandomDeck();
-        }else{
-          autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-        }
-      }, 1000);
-    }));
+   try{
+    const res = await fetch(FN_VOTE, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization":"Bearer "+SUPABASE_ANON,
+        "apikey": SUPABASE_ANON
+      },
+      body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, bracket })
+    });
+    const j = await res.json().catch(()=> ({}));
+    if(!res.ok || j?.ok===false){
+      toast("保存エラーが発生しました。少し時間をおいてお試しください。");
+      return;
+    }
+
+    // 集計表示＆自動遷移（10秒）
+    resultsEl.style.display="flex";
+    await loadVotesAndRenderResults(true);
+
+    let left = 10;
+    autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+    clearInterval(autoNextTimer);
+    autoNextTimer = setInterval(()=>{
+      left--;
+      if(left<=0){ clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); }
+      else autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+    }, 1000);
+  }catch{
+    toast("保存エラーが発生しました。");
+  }
+}));
 
     // スキップ／次へ
     $("#skipBtn").addEventListener("click", ()=> loadRandomDeck());
