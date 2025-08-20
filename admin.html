@@ -18,8 +18,9 @@
   .warn{background:#f59e0b;color:#111827;border-color:#f59e0b}
   .ok{background:#16a34a;color:#fff;border-color:#16a34a}
   .link{color:#2563eb;text-decoration:none}
-  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
   .section{margin-top:16px}
+  .scroll-panel{max-height:70vh;overflow:auto;border:1px solid #e5e7eb;border-radius:12px;padding:8px;background:#fff}
 </style>
 <body>
   <div class="row">
@@ -27,7 +28,6 @@
     <label>Admin Token: <input id="token" placeholder="保存されます" style="min-width:260px"></label>
   </div>
 
-  <!-- ▼ 設定（通報しきい値） -->
   <div class="section">
     <h2>設定</h2>
     <div class="row">
@@ -37,9 +37,7 @@
     </div>
     <div class="muted">※ この件数以上の通報で該当デッキを自動削除します</div>
   </div>
-  <!-- ▲ 設定 -->
 
-  <!-- ▼ デッキ一覧 -->
   <div class="section">
     <h2>デッキ一覧</h2>
     <div class="row">
@@ -50,9 +48,8 @@
       <label>Offset <input id="doffset" type="number" value="0" style="width:90px"></label>
       <button id="dload">読み込み</button>
     </div>
-    <div id="dlist" class="grid"></div>
+    <div id="dlist" class="grid scroll-panel"></div>
   </div>
-  <!-- ▲ デッキ一覧 -->
 
   <div class="section">
     <h2>通報一覧</h2>
@@ -64,7 +61,7 @@
       <label>To <input id="to" type="date"></label>
       <button id="load">読み込み</button>
     </div>
-    <div id="list" class="grid"></div>
+    <div id="list" class="grid scroll-panel"></div>
   </div>
 
   <div class="section">
@@ -74,7 +71,7 @@
       <label>件数 <input id="limit_rep" type="number" value="100" style="width:90px"></label>
       <button id="loadRep">読み込み</button>
     </div>
-    <div id="reporters" class="grid"></div>
+    <div id="reporters" class="grid scroll-panel"></div>
   </div>
 
   <div class="section">
@@ -84,23 +81,21 @@
       <label>件数 <input id="limit_reg" type="number" value="100" style="width:90px"></label>
       <button id="loadReg">読み込み</button>
     </div>
-    <div id="registrants" class="grid"></div>
+    <div id="registrants" class="grid scroll-panel"></div>
   </div>
 
   <div class="section">
     <h2>ブロック一覧</h2>
     <div class="row"><button id="loadBL">更新</button></div>
-    <div class="grid" id="blocklist"></div>
+    <div class="grid scroll-panel" id="blocklist"></div>
   </div>
 
 <script>
-/* ==== 設定 ==== */
 const FN = "https://onzljxnqlrohkzsfxqbh.supabase.co/functions/v1/admin2";
 const $ = (id)=>document.getElementById(id);
 $("token").value = localStorage.getItem("admin_token") || "";
 $("token").addEventListener('change',()=>localStorage.setItem("admin_token",$("token").value));
 
-/* ==== ボタン紐付け ==== */
 $("loadSet").onclick = loadSettings;
 $("saveSet").onclick = saveSettings;
 $("dload").onclick = loadDecks;
@@ -109,19 +104,14 @@ $("loadRep").onclick = loadReporters;
 $("loadReg").onclick = loadRegistrants;
 $("loadBL").onclick = loadBlocklist;
 
-/* ==== 共通 API ヘルパ ==== */
 async function api(pathOrQuery, opts={}){
   const token=$("token").value.trim(); if(!token){ alert("Admin Tokenを入力してください"); throw new Error('no token'); }
   const url = pathOrQuery.startsWith("http") ? pathOrQuery : `${FN}${pathOrQuery}`;
   const r = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), "x-admin-token": token } });
-  if(!r.ok){
-    const t = await r.text().catch(()=> "");
-    throw new Error(t || `HTTP ${r.status}`);
-  }
+  if(!r.ok){ const t = await r.text().catch(()=> ""); throw new Error(t || `HTTP ${r.status}`); }
   return r.json();
 }
 
-/* ==== 設定（取得・保存） ==== */
 async function loadSettings(){
   try{
     const j = await api("?view=settings", { method:"GET" });
@@ -143,7 +133,7 @@ async function saveSettings(){
   }
 }
 
-/* ==== デッキ一覧 ==== */
+/* デッキ一覧 */
 async function loadDecks(){
   const q = $("dq").value.trim();
   const limit = $("dlimit").value || "50";
@@ -166,9 +156,7 @@ async function loadDecks(){
             <div><a class="link mono" href="${x.source_url}" target="_blank" rel="noopener">${x.source_url}</a></div>
             <div class="muted">IP: <span class="mono">${x.created_by_ip||'-'}</span> / SID: <span class="mono">${x.created_by_session||'-'}</span></div>
           </div>
-          <div class="btns">
-            <button class="danger" onclick="delDeck('${x.id}')" title="ラベル/通報も削除">削除</button>
-          </div>
+          <div class="btns"><button class="danger" onclick="delDeck('${x.id}','decks')" title="ラベル/通報も削除">削除</button></div>
         </div>
       </div>
     `).join('') || '<div class="muted">該当なし</div>';
@@ -177,7 +165,7 @@ async function loadDecks(){
   }
 }
 
-/* ==== 通報一覧 ==== */
+/* 通報一覧 */
 async function loadReports(){
   const q = $("q").value.trim();
   const min = $("min").value || "1";
@@ -198,19 +186,21 @@ async function loadReports(){
         </div>
         <div class="btns">
           <button class="warn" onclick="clearReports('${x.deck_id}')">通報クリア</button>
-          <button class="danger" onclick="delDeck('${x.deck_id}')" title="ラベルも含め削除されます">削除</button>
+          <button class="danger" onclick="delDeck('${x.deck_id}','reports')" title="ラベルも含め削除されます">削除</button>
         </div>
       </div>
     </div>
   `).join('') || '<div class="muted">該当なし</div>';
 }
 
-/* ==== 削除・通報クリア ==== */
+/* 削除・通報クリア */
 async function apiPost(payload){ return api("", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }); }
-async function delDeck(id){
+async function delDeck(id, origin){
   if(!confirm("このデッキを削除しますか？（投票・通報も消えます）")) return;
   await apiPost({ action:"delete_deck", deck_id:id });
-  loadDecks(); loadReports();
+  if (origin === 'decks') loadDecks();
+  else if (origin === 'reports') loadReports();
+  else { loadDecks(); loadReports(); }
 }
 async function clearReports(id){
   if(!confirm("このデッキの通報を全て削除しますか？")) return;
@@ -218,7 +208,7 @@ async function clearReports(id){
   loadReports();
 }
 
-/* ==== 通報者（上位） ==== */
+/* 通報者（上位） */
 async function loadReporters(){
   const limit = $("limit_rep").value || "100";
   const days = $("days").value || "7";
@@ -233,19 +223,15 @@ async function loadReporters(){
           <div class="muted">通報: ${r.count}件 / 最終: ${fmt(r.last)}</div>
         </div>
         <div class="btns">
-          ${r.ip ? (r.blocked_ip
-            ? `<button class="ok" onclick="unblockIp('${r.ip}')">IP解除</button>`
-            : `<button class="danger" onclick="blockIp('${r.ip}')">IPブロック</button>`) : ''}
-          ${r.session_id ? (r.blocked_session
-            ? `<button class="ok" onclick="unblockSession('${r.session_id}')">セッション解除</button>`
-            : `<button class="danger" onclick="blockSession('${r.session_id}')">セッションブロック</button>`) : ''}
+          ${r.ip ? (r.blocked_ip ? `<button class="ok" onclick="unblockIp('${r.ip}')">IP解除</button>` : `<button class="danger" onclick="blockIp('${r.ip}')">IPブロック</button>`) : ''}
+          ${r.session_id ? (r.blocked_session ? `<button class="ok" onclick="unblockSession('${r.session_id}')">セッション解除</button>` : `<button class="danger" onclick="blockSession('${r.session_id}')">セッションブロック</button>`) : ''}
         </div>
       </div>
     </div>
   `).join('') || '<div class="muted">該当なし</div>';
 }
 
-/* ==== 登録者（上位） ==== */
+/* 登録者（上位） */
 async function loadRegistrants(){
   const limit = $("limit_reg").value || "100";
   const days = $("days_reg").value || "7";
@@ -260,19 +246,15 @@ async function loadRegistrants(){
           <div class="muted">登録: ${r.count}件 / 最終: ${fmt(r.last)}</div>
         </div>
         <div class="btns">
-          ${r.ip ? (r.blocked_ip
-            ? `<button class="ok" onclick="unblockIp('${r.ip}')">IP解除</button>`
-            : `<button class="danger" onclick="blockIp('${r.ip}')">IPブロック</button>`) : ''}
-          ${r.session_id ? (r.blocked_session
-            ? `<button class="ok" onclick="unblockSession('${r.session_id}')">セッション解除</button>`
-            : `<button class="danger" onclick="blockSession('${r.session_id}')">セッションブロック</button>`) : ''}
+          ${r.ip ? (r.blocked_ip ? `<button class="ok" onclick="unblockIp('${r.ip}')">IP解除</button>` : `<button class="danger" onclick="blockIp('${r.ip}')">IPブロック</button>`) : ''}
+          ${r.session_id ? (r.blocked_session ? `<button class="ok" onclick="unblockSession('${r.session_id}')">セッション解除</button>` : `<button class="danger" onclick="blockSession('${r.session_id}')">セッションブロック</button>`) : ''}
         </div>
       </div>
     </div>
   `).join('') || '<div class="muted">該当なし</div>';
 }
 
-/* ==== ブロック操作＆一覧 ==== */
+/* ブロック一覧 */
 async function blockIp(ip){ await apiPost({ action:"block_ip", ip }); loadReporters(); loadRegistrants(); loadBlocklist(); }
 async function unblockIp(ip){ await apiPost({ action:"unblock_ip", ip }); loadReporters(); loadRegistrants(); loadBlocklist(); }
 async function blockSession(session_id){ await apiPost({ action:"block_session", session_id }); loadReporters(); loadRegistrants(); loadBlocklist(); }
@@ -303,7 +285,6 @@ async function loadBlocklist(){
   `;
 }
 
-/* 初期：設定だけ自動読込（不要なら削除OK） */
 loadSettings();
 </script>
 </body>
