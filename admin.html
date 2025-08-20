@@ -1,34 +1,58 @@
 <!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <!-- 検索避け -->
-  <meta name="robots" content="noindex,nofollow">
-  <title>管理 | みんなでブラケット診断</title>
-  <style>
-    body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;padding:16px;background:#fff;color:#0f172a}
-    h2{margin:18px 0 8px}
-    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    input,button,select{padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px}
-    button{cursor:pointer;background:#fff}
-    .grid{display:grid;gap:10px}
-    .card{border:1px solid #e5e7eb;border-radius:12px;padding:12px}
-    .muted{color:#64748b;font-size:12px}
-    .btns{display:flex;gap:8px;flex-wrap:wrap}
-    .danger{background:#dc2626;color:#fff;border-color:#dc2626}
-    .warn{background:#f59e0b;color:#111827;border-color:#f59e0b}
-    .ok{background:#16a34a;color:#fff;border-color:#16a34a}
-    .link{color:#2563eb;text-decoration:none}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
-    .section{margin-top:16px}
-  </style>
-</head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>管理 | みんなでブラケット診断</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;padding:16px;background:#fff;color:#0f172a}
+  h2{margin:18px 0 8px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input,button,select{padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px}
+  button{cursor:pointer;background:#fff}
+  .grid{display:grid;gap:10px}
+  .card{border:1px solid #e5e7eb;border-radius:12px;padding:12px}
+  .muted{color:#64748b;font-size:12px}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  .danger{background:#dc2626;color:#fff;border-color:#dc2626}
+  .warn{background:#f59e0b;color:#111827;border-color:#f59e0b}
+  .ok{background:#16a34a;color:#fff;border-color:#16a34a}
+  .link{color:#2563eb;text-decoration:none}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+  .section{margin-top:16px}
+</style>
 <body>
   <div class="row">
     <b>管理</b>
     <label>Admin Token: <input id="token" placeholder="保存されます" style="min-width:260px"></label>
   </div>
+
+  <!-- ▼ 設定（通報しきい値） -->
+  <div class="section">
+    <h2>設定</h2>
+    <div class="row">
+      <label>通報しきい値 <input id="th" type="number" value="5" style="width:90px"></label>
+      <button id="loadSet">読み込み</button>
+      <button id="saveSet" class="ok">保存</button>
+    </div>
+    <div class="muted">※ この件数以上の通報で該当デッキを自動削除します</div>
+  </div>
+  <!-- ▲ 設定 -->
+
+  <!-- ▼ デッキ一覧 -->
+  <div class="section">
+    <h2>デッキ一覧</h2>
+    <div class="row">
+      <label>検索 <input id="dq" placeholder="URL/名前"></label>
+      <label>件数 <input id="dlimit" type="number" value="50" style="width:90px"></label>
+      <label>From <input id="dfrom" type="date"></label>
+      <label>To <input id="dto" type="date"></label>
+      <label>Offset <input id="doffset" type="number" value="0" style="width:90px"></label>
+      <button id="dload">読み込み</button>
+    </div>
+    <div id="dlist" class="grid"></div>
+  </div>
+  <!-- ▲ デッキ一覧 -->
 
   <div class="section">
     <h2>通報一覧</h2>
@@ -70,25 +94,90 @@
   </div>
 
 <script>
+/* ==== 設定 ==== */
 const FN = "https://onzljxnqlrohkzsfxqbh.supabase.co/functions/v1/admin-reports";
 const $ = (id)=>document.getElementById(id);
 $("token").value = localStorage.getItem("admin_token") || "";
 $("token").addEventListener('change',()=>localStorage.setItem("admin_token",$("token").value));
 
+/* ==== ボタン紐付け ==== */
+$("loadSet").onclick = loadSettings;
+$("saveSet").onclick = saveSettings;
+$("dload").onclick = loadDecks;
 $("load").onclick = loadReports;
 $("loadRep").onclick = loadReporters;
 $("loadReg").onclick = loadRegistrants;
 $("loadBL").onclick = loadBlocklist;
 
+/* ==== 共通 API ヘルパ ==== */
 async function api(pathOrQuery, opts={}){
   const token=$("token").value.trim(); if(!token){ alert("Admin Tokenを入力してください"); throw new Error('no token'); }
   const url = pathOrQuery.startsWith("http") ? pathOrQuery : `${FN}${pathOrQuery}`;
   const r = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), "x-admin-token": token } });
-  if(!r.ok){ throw new Error(await r.text()); }
+  if(!r.ok){
+    const t = await r.text().catch(()=> "");
+    throw new Error(t || `HTTP ${r.status}`);
+  }
   return r.json();
 }
 
-/* 通報一覧 */
+/* ==== 設定（取得・保存） ==== */
+async function loadSettings(){
+  try{
+    const j = await api("?view=settings", { method:"GET" });
+    $("th").value = j?.data?.report_delete_threshold?.value ?? 5;
+  }catch(e){
+    alert("設定の読み込みに失敗: " + (e?.message||e));
+  }
+}
+async function saveSettings(){
+  const v = Number($("th").value || "5");
+  if (!Number.isFinite(v) || v<1) return alert("1以上の数値を入力してください");
+  try{
+    await api("", { method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ action:"set_settings", report_delete_threshold: v })
+    });
+    alert("保存しました");
+  }catch(e){
+    alert("保存に失敗: " + (e?.message||e));
+  }
+}
+
+/* ==== デッキ一覧 ==== */
+async function loadDecks(){
+  const q = $("dq").value.trim();
+  const limit = $("dlimit").value || "50";
+  const from = $("dfrom").value;
+  const to   = $("dto").value;
+  const offset = $("doffset").value || "0";
+  const query = `?view=decks&limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}${from?`&from=${from}`:''}${to?`&to=${to}`:''}${q?`&q=${encodeURIComponent(q)}`:''}`;
+
+  try{
+    const j = await api(query, { method:"GET" });
+    const L = $("dlist");
+    const fmt = (d)=> d ? new Date(d).toLocaleString() : "—";
+    L.innerHTML = (j.data||[]).map(x=>`
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <div>
+            <div><b>${x.deck_name || '(名称なし)'}</b></div>
+            <div class="muted">登録: ${fmt(x.created_at)} / 公開日: ${x.registered_at||'—'} / 通報: ${x.report_count||0}件</div>
+            <div class="muted">votes: [1:${x.votes?.b1||0}] [2:${x.votes?.b2||0}] [3:${x.votes?.b3||0}] [4:${x.votes?.b4||0}]</div>
+            <div><a class="link mono" href="${x.source_url}" target="_blank" rel="noopener">${x.source_url}</a></div>
+            <div class="muted">IP: <span class="mono">${x.created_by_ip||'-'}</span> / SID: <span class="mono">${x.created_by_session||'-'}</span></div>
+          </div>
+          <div class="btns">
+            <button class="danger" onclick="delDeck('${x.id}')" title="ラベル/通報も削除">削除</button>
+          </div>
+        </div>
+      </div>
+    `).join('') || '<div class="muted">該当なし</div>';
+  }catch(e){
+    alert("読み込みに失敗しました: " + (e?.message||e));
+  }
+}
+
+/* ==== 通報一覧 ==== */
 async function loadReports(){
   const q = $("q").value.trim();
   const min = $("min").value || "1";
@@ -115,18 +204,21 @@ async function loadReports(){
     </div>
   `).join('') || '<div class="muted">該当なし</div>';
 }
+
+/* ==== 削除・通報クリア ==== */
+async function apiPost(payload){ return api("", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }); }
 async function delDeck(id){
   if(!confirm("このデッキを削除しますか？（投票・通報も消えます）")) return;
-  await api("", { method:"POST", body: JSON.stringify({ action:"delete_deck", deck_id:id }), headers:{ "Content-Type":"application/json" }});
-  loadReports();
+  await apiPost({ action:"delete_deck", deck_id:id });
+  loadDecks(); loadReports();
 }
 async function clearReports(id){
   if(!confirm("このデッキの通報を全て削除しますか？")) return;
-  await api("", { method:"POST", body: JSON.stringify({ action:"clear_reports", deck_id:id }), headers:{ "Content-Type":"application/json" }});
+  await apiPost({ action:"clear_reports", deck_id:id });
   loadReports();
 }
 
-/* 通報者（上位） */
+/* ==== 通報者（上位） ==== */
 async function loadReporters(){
   const limit = $("limit_rep").value || "100";
   const days = $("days").value || "7";
@@ -153,7 +245,7 @@ async function loadReporters(){
   `).join('') || '<div class="muted">該当なし</div>';
 }
 
-/* ★登録者（上位） */
+/* ==== 登録者（上位） ==== */
 async function loadRegistrants(){
   const limit = $("limit_reg").value || "100";
   const days = $("days_reg").value || "7";
@@ -180,8 +272,7 @@ async function loadRegistrants(){
   `).join('') || '<div class="muted">該当なし</div>';
 }
 
-/* ブロック操作＆一覧 */
-async function apiPost(payload){ return api("", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }); }
+/* ==== ブロック操作＆一覧 ==== */
 async function blockIp(ip){ await apiPost({ action:"block_ip", ip }); loadReporters(); loadRegistrants(); loadBlocklist(); }
 async function unblockIp(ip){ await apiPost({ action:"unblock_ip", ip }); loadReporters(); loadRegistrants(); loadBlocklist(); }
 async function blockSession(session_id){ await apiPost({ action:"block_session", session_id }); loadReporters(); loadRegistrants(); loadBlocklist(); }
@@ -211,6 +302,9 @@ async function loadBlocklist(){
     </div>
   `;
 }
+
+/* 初期：設定だけ自動読込（不要なら削除OK） */
+loadSettings();
 </script>
 </body>
 </html>
