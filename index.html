@@ -13,7 +13,7 @@
 :root{
   --bg:#fff; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb;
   --brand:#d62828; --c1:#6EE7B7; --c2:#4E9CFF; --c3:#FFC857; --c4:#FF6B6B;
-  --radius:14px; --primary:#ef4444; --primary-weak:#fde8e8;
+  --radius:14px;
 }
 *{box-sizing:border-box} html,body{height:100%}
 body{margin:0;font-family:"Inter","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--fg);background:var(--bg)}
@@ -26,11 +26,26 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;pa
 .deck-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:13px}
 .deck-link{color:#2563eb;text-decoration:underline;text-underline-offset:2px}
 
-.small-btn{font-size:13px;border:1px solid var(--border);background:#fff;color:#374151;border-radius:999px;padding:6px 12px;cursor:pointer}
-.small-btn:hover{background:#fafafa}
-.small-btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
-.small-btn.primary.ghost{background:var(--primary-weak);color:#b91c1c;border-color:#fecaca}
+/* 共通ボタン（いま風・控えめ） */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:13px;padding:8px 12px;border-radius:12px;
+  border:1px solid var(--border); background:#fff; color:#111;
+  cursor:pointer; transition:background .15s ease, transform .05s ease, opacity .15s ease;
+}
+.btn:hover{background:#f9fafb}
+.btn:active{transform:translateY(1px)}
+.btn.busy{opacity:.7;pointer-events:none}
 
+/* 種別 */
+.btn-next{background:#f3f4f6;border-color:#e5e7eb}
+.btn-next:hover{background:#e5e7eb}
+.btn-x{background:#000;color:#fff;border-color:#000}
+.btn-x:hover{filter:brightness(1.06)}
+.btn-plain{background:#fff;color:#111;border-color:#e5e7eb}
+.btn-plain:hover{background:#f9fafb}
+
+/* カード/レイアウト */
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .grid{display:grid;gap:16px}
 @media(min-width:1000px){ .grid{grid-template-columns:1.2fr .8fr} }
@@ -67,10 +82,10 @@ iframe{width:100%;height:70vh;min-height:520px;border:0;display:block;background
 .b4{background:color-mix(in srgb, var(--c4) 20%, white)}
 @media(min-width:1000px){ .chip{height:72px; font-size:24px} }
 
-/* 選択中の見た目（明るく）＆連打ガード */
+/* 選択中の見た目（明るめ） */
 .chip.selected{
-  position:relative; outline:2px solid var(--brand);
-  box-shadow:0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent) inset;
+  position:relative; outline:2px solid #ef4444;
+  box-shadow:0 0 0 4px color-mix(in srgb, #ef4444 18%, transparent) inset;
   transform: translateY(-1px); filter:brightness(1.03)
 }
 .chip[disabled]{opacity:.6; pointer-events:none; filter:grayscale(.2)}
@@ -95,7 +110,7 @@ iframe{width:100%;height:70vh;min-height:520px;border:0;display:block;background
 .sheet .body{padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:calc(100vh - 56px)}
 .tabs{display:flex;gap:8px;flex-wrap:wrap}
 .tab{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px}
-.tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
+.tab.active{background:#d62828;border-color:#d62828;color:#fff}
 .note{font-size:12px;color:var(--muted);line-height:1.6}
 .msg{font-size:14px}
 .item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:8px}
@@ -112,14 +127,11 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
 /* トースト */
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:999px;display:none}
 
-/* Mana/XP バー（控えめ・灰色・短い） */
-.mana-wrap{display:flex;align-items:center;gap:6px;margin-top:6px}
-.mana-bar{
-  width:88px; height:4px;
-  background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; overflow:hidden
-}
-.mana-bar > i{display:block;height:100%;width:0;background:#cbd5e1}
-.mana-label{font-size:12px;color:var(--muted)}
+/* Mana/XP（控えめ・短いグレー） */
+.mana-wrap{display:flex;align-items:center;gap:8px;margin-top:6px}
+.mana-bar{flex:1;height:6px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:999px;overflow:hidden}
+.mana-bar > i{display:block;height:100%;width:0;background:#d1d5db}
+.mana-label{font-size:12px;color:var(--muted);font-weight:400}
 .mana-syms{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .sym{width:16px;height:16px;border-radius:999px;border:1px solid #e5e7eb;display:inline-flex;align-items:center;justify-content:center;font-size:11px;line-height:1;background:#fff}
 .sym.W{background:#fefce8;border-color:#fde68a}
@@ -129,22 +141,6 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
 .sym.G{background:#ecfdf5;border-color:#bbf7d0}
 .sym.C{background:#f3f4f6;border-color:#e5e7eb}
 .rt{font-size:12px;color:#9ca3af;margin-left:6px}
-
-/* ▼ Xボタン（黒地・白字）とアイコン（公式SVGをimgで表示） */
-.btn-icon{display:inline-flex;align-items:center;gap:6px}
-.btn-icon svg,
-.btn-icon img{width:14px;height:14px;display:block}
-
-.btn-x{
-  background:#000 !important;
-  border-color:#000 !important;
-  color:#fff !important;
-}
-.btn-x:hover{ background:#111 !important }
-
-/* 削除希望は薄色をやめて通常色に */
-#reportBtn{ color:#111 !important; opacity:1 !important }
-
 </style>
 </head>
 <body>
@@ -157,7 +153,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
         <span data-deck-date style="display:none">0000/00/00</span>
       </div>
     </div>
-    <button id="openSheet" class="small-btn">登録 / 削除</button>
+    <button id="openSheet" class="btn btn-plain">登録 / 削除</button>
   </header>
 
   <div class="grid">
@@ -172,7 +168,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
           <p>ブラウザや拡張機能の制限で埋め込みがブロックされる場合があります。下のリンクから新しいタブで開いてください。</p>
           <div class="row">
             <a id="openHareruyaLink" target="_blank" rel="noopener noreferrer">hareruyamtg.com で開く</a>
-            <button id="retryEmbed">再読み込み</button>
+            <button id="retryEmbed" class="btn btn-plain">再読み込み</button>
           </div>
           <p class="note" style="margin-top:10px">※ iOS/Safariの場合、トラッキング防止/コンテンツブロッカー設定により表示されないことがあります。</p>
         </div>
@@ -209,23 +205,23 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
         </div>
 
         <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
-          <button id="nextBtn" class="small-btn primary">▶ 次のデッキへ</button>
+          <button id="nextBtn" class="btn btn-next">次のデッキへ →</button>
           <span class="hint" id="autoNextHint"></span>
           <span class="right"></span>
         </div>
       </div>
 
       <!-- 常時表示の操作ボタン -->
-<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-  <!-- 公式の X アイコン（Simple Icons CDN）を白で表示 -->
-  <button id="shareBtn" class="small-btn btn-icon btn-x" aria-label="Xでシェア">
-    <img src="https://cdn.simpleicons.org/x/FFFFFF" alt="" loading="lazy" decoding="async">
-    Xでシェア
-  </button>
-
-  <!-- 削除希望は通常の文字色（薄色クラスは使わない） -->
-  <button id="reportBtn" class="small-btn">削除希望</button>
-</div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button id="shareBtn" class="btn btn-x" aria-label="Xでシェア">
+          <!-- 公式Xマーク風SVG（単色） -->
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+            <path d="M18.244 3H21l-6.56 7.5L22 21h-6.5l-5.06-6.29L4.9 21H2l6.97-7.97L2 3h6.5l4.77 5.93L18.244 3zm-2.28 16h2.02L8.12 5H6.1l9.864 14z"/>
+          </svg>
+          <span>Xでシェア</span>
+        </button>
+        <button id="reportBtn" class="btn btn-plain">削除希望</button>
+      </div>
 
       <!-- Mana/XP（控えめ） -->
       <div class="mana-wrap">
@@ -240,7 +236,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
   <div class="card search-card" style="margin-top:16px">
     <div class="search-row">
       <input type="text" id="searchInput" placeholder="例: https://www.hareruyamtg.com/decks/0000000  または 0000000">
-      <button id="searchBtn" class="small-btn">検索</button>
+      <button id="searchBtn" class="btn btn-plain">検索</button>
     </div>
   </div>
 
@@ -259,7 +255,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
 <aside class="sheet" id="sheet">
   <header>
     <div style="font-weight:700">登録 / 削除</div>
-    <button id="closeSheet" class="small-btn right">閉じる</button>
+    <button id="closeSheet" class="btn btn-plain right">閉じる</button>
   </header>
   <div class="body">
     <div class="tabs">
@@ -275,7 +271,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
       </div>
       <div class="search-row">
         <input type="text" id="regUrl" placeholder="例: https://www.hareruyamtg.com/decks/0000000">
-        <button id="regBtn" class="small-btn">登録</button>
+        <button id="regBtn" class="btn btn-plain">登録</button>
       </div>
       <div class="msg" id="regMsg"></div>
     </div>
@@ -284,7 +280,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
       <div class="note">削除してほしいデッキのURL（または数字ID）を入力して「通報」。一定数で自動削除。</div>
       <div class="search-row">
         <input type="text" id="delUrl" placeholder="例: https://www.hareruyamtg.com/decks/0000000">
-        <button id="delBtn" class="small-btn">通報</button>
+        <button id="delBtn" class="btn btn-plain">通報</button>
       </div>
       <div class="msg" id="delMsg"></div>
     </div>
@@ -292,7 +288,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
     <div id="pane-mine" style="display:none">
       <div class="note">あなたが登録したデッキ一覧（最大50件）。ここから削除できます。</div>
       <div style="display:flex;gap:8px;margin-bottom:6px">
-        <button id="reloadMine" class="small-btn">更新</button>
+        <button id="reloadMine" class="btn btn-plain">更新</button>
       </div>
       <div id="mineList" style="display:flex;flex-direction:column;gap:8px"></div>
     </div>
@@ -415,9 +411,9 @@ async function loadMyVote(){
 
 /* ====== Mana/XP（ローカル保存） ====== */
 const xpKey = "xp_v2";
-const manaLvEl = $("#manaLv"), manaFill = $("#manaFill"), manaSyms = $("#manaSyms"), rtLabel = $("#rtLabel");
+const manaLvEl=$("#manaLv"), manaFill=$("#manaFill"), manaSyms=$("#manaSyms"), rtLabel=$("#rtLabel");
 
-// levelごとの累積必要XP（Lv1..16）
+// 累積必要XP（Lv1..16）
 const lvNeed = [10,30,70,150,310,630,1270,2550,5110,10230,20470,40950,81910,163830,327670,655350];
 
 function loadXP(){ try{ return JSON.parse(localStorage.getItem(xpKey)||"{}"); }catch{ return {}; } }
@@ -431,54 +427,47 @@ function ensureXP(){
 
 function updateXpUI(){
   const s = ensureXP();
-
-  // 数値は見せず、バーの伸びのみ
   const prevNeed = s.lv ? lvNeed[s.lv-1] : 0;
-  const nextNeed = lvNeed[s.lv] ?? lvNeed[lvNeed.length-1];
+  const nextNeed = lvNeed[s.lv] ?? (prevNeed || 10);
   const cur = Math.max(0, s.xp - prevNeed);
   const denom = Math.max(1, nextNeed - prevNeed);
   const pct = Math.max(0, Math.min(100, Math.round(cur / denom * 100)));
 
-  manaLvEl.textContent = s.lv;     // 「0 Mana」
+  manaLvEl.textContent = s.lv;
   manaFill.style.width = pct + "%";
 
   // 並び替え：無色 > W > U > B > R > G
   const order = ["C","W","U","B","R","G"];
   const syms = [];
-  // 無色は ①②… で集約表示
   if (s.mana.C>0){
-    const circled = (n)=>{
+    const circled = (n)=> {
       const base = 9311; // ① U+2460
       return (n>=1 && n<=20) ? String.fromCharCode(base+n) : String(n);
     };
     syms.push(`<span class="sym C">${circled(s.mana.C)}</span>`);
   }
   for(const k of order.slice(1)){
-    for(let i=0;i<s.mana[k];i++){
-      syms.push(`<span class="sym ${k}">${k}</span>`);
-    }
+    for(let i=0;i<s.mana[k];i++) syms.push(`<span class="sym ${k}">${k}</span>`);
   }
   manaSyms.innerHTML = syms.join("");
 }
 
-/** レベルアップ時のマナ付与ルール（青=ぞろ目のみ、無色=未該当+末尾0秒） */
+// マナ色決定（青=ぞろ目秒のみ／末尾0は無色）
 function awardManaByRule(rtSec){
-  const now = new Date(); const h = now.getHours();
-  const isAM = h < 12; const isPM = !isAM;
+  const now = new Date();
+  const h = now.getHours();
+  const isAM = h < 12, isPM = !isAM;
   const sec = now.getSeconds();
-  const isZeroTail = (sec % 10 === 0);                                // 末尾0秒
-  const isDbl = (Math.floor(sec/10) === (sec % 10) && sec !== 0);     // 11,22,33,44,55
+  const isZeroTail = (sec % 10 === 0);
+  const isDbl = (Math.floor(sec/10) === (sec % 10)) && sec !== 0; // 11,22,33,44,55
 
-  let color = "C"; // default 無色
-
-  // 優先順：U(ぞろ目) → R/G/W/B → C(未該当 or 末尾0)
-  if (isDbl) color = "U";
+  let color = "C"; // デフォは無色
+  if (isZeroTail) color = "C";
+  else if (isDbl) color = "U";
   else if (rtSec <= 20 && isPM) color = "R";
   else if (rtSec >= 50 && isAM) color = "G";
-  else if (rtSec >=21 && rtSec <=59 && isAM) color = "W";
-  else if (rtSec >=21 && rtSec <=59 && isPM) color = "B";
-  else if (isZeroTail) color = "C"; // 末尾0秒は無色へ
-  else color = "C";                 // どれにも当てはまらなければ無色
+  else if (rtSec >= 21 && rtSec <= 59 && isAM) color = "W";
+  else if (rtSec >= 21 && rtSec <= 59 && isPM) color = "B";
 
   const s = ensureXP();
   s.mana[color] = (s.mana[color]||0) + 1;
@@ -486,30 +475,23 @@ function awardManaByRule(rtSec){
   updateXpUI();
 }
 
-/** 1デッキ1回だけXPを付与（“ぞろ目秒”なら +1 ボーナス） */
-function addXPIfFirstVote(rtSec){
-  if (hadMyVoteBefore) return; // 1デッキ1XP
+// 初回投票のみXP付与。ぞろ目秒は+1ボーナス
+function maybeAwardXP(rtSec){
+  if (hadMyVoteBefore) return false;  // 1デッキ1回だけ
+  const sec = new Date().getSeconds();
+  const isDbl = (Math.floor(sec/10) === (sec % 10)) && sec !== 0;
 
   const s = ensureXP();
+  s.xp = (s.xp||0) + 1 + (isDbl ? 1 : 0);
 
-  // 基本 +1、投票成立時が「ぞろ目秒」なら +1 ボーナス
-  let delta = 1;
-  const nowSec = (new Date()).getSeconds();
-  const isDbl = (Math.floor(nowSec/10) === (nowSec % 10) && nowSec !== 0); // 11,22,33,44,55
-  if (isDbl) delta += 1;
-
-  s.xp = (s.xp||0) + delta;
-
-  // レベルアップ判定
-  const nextLvNeed = lvNeed[s.lv] ?? Infinity;
-  if (s.xp >= nextLvNeed){
+  // レベルアップ（複数段もケア）
+  while (s.lv < lvNeed.length && s.xp >= lvNeed[s.lv]){
     s.lv++;
-    saveXP(s);
     awardManaByRule(rtSec);
-  }else{
-    saveXP(s);
   }
+  saveXP(s);
   updateXpUI();
+  return true;
 }
 
 /* ====== 表示 ====== */
@@ -536,7 +518,7 @@ async function showDeckByRow(row,{showResults=false}={}){
   deckShownAtMs = performance.now();
 }
 
-/* ====== ランダム（未回答優先 + “新しい/投票少ない”を優先） ====== */
+/* ====== ランダム（未回答優先 & 新着/少票優遇・通報/スキップ自分除外） ====== */
 async function loadRandomDeck(){
   const { data, error } = await sb.rpc("random_deck_for_session", { p_session: sid });
   if (error) { toast("読み込みエラー"); return; }
@@ -569,26 +551,13 @@ function setVoting(b){ voting=b; voteChips.forEach(btn => btn.disabled = b); }
 async function postVoteOnce(bracket, rtSec){
   const res = await fetch(FN_VOTE, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + SUPABASE_ANON,
-      "apikey": SUPABASE_ANON
-    },
-    body: JSON.stringify({
-      deck_id: currentDeck.id,
-      session_id: sid,
-      bracket,
-      rt_sec: rtSec
-    })
+    headers: { "Content-Type": "application/json","Authorization": "Bearer " + SUPABASE_ANON,"apikey": SUPABASE_ANON },
+    body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, bracket, rt_sec: rtSec })
   });
   let ok = res.ok;
-  try {
-    const j = await res.clone().json();
-    if (j && j.ok === false) ok = false;
-  } catch(_){}
+  try { const j = await res.clone().json(); if (j && j.ok === false) ok = false; } catch(_){}
   return { ok, status: res.status };
 }
-
 async function postVoteWithRetry(bracket, rtSec){
   const retriable = new Set([429, 409, 500, 502, 503, 504]);
   for (let i=0; i<2; i++){
@@ -599,55 +568,40 @@ async function postVoteWithRetry(bracket, rtSec){
   }
   return false;
 }
-
 document.querySelectorAll(".chip[data-vote]").forEach(el =>
   el.addEventListener("click", async (e)=>{
     if (!currentDeck || voting) return;
 
     const bracket = Number(e.currentTarget.dataset.vote);
     setVoting(true);
-
     try{
       const rtSec = Math.max(0, Math.round((performance.now() - deckShownAtMs)/1000));
       const done = await postVoteWithRetry(bracket, rtSec);
-      if (!done){
-        toast("保存エラー。少し時間をおいて再試行してください。");
-        return;
-      }
+      if (!done){ toast("保存エラー。少し時間をおいて再試行してください。"); return; }
 
       markMyVote(bracket);
-
-      // 初回投票直後の連打でもXPが増えないよう即座にフラグを立てる
-      if (!hadMyVoteBefore) hadMyVoteBefore = true;
-
       resultsEl.style.display="flex";
       await loadVotesAndRenderResults(true);
 
-      // 1デッキ1XP（ぞろ目秒なら+1ボーナス）
-      addXPIfFirstVote(rtSec);
+      // XP付与（初回のみ & ぞろ目秒ボーナス）
+      maybeAwardXP(rtSec);
+      // 以後増えないように投票済みフラグ
+      hadMyVoteBefore = true;
 
-      // 反応時間表示（投票後のみ）
-      const rt = document.getElementById("rtLabel");
-      if (rt){ rt.style.display="inline"; rt.textContent = `${rtSec}sec`; }
+      // 反応時間表示
+      if (rtLabel){ rtLabel.style.display="inline"; rtLabel.textContent = `${rtSec}sec`; }
 
       let left = 10;
       autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
       clearInterval(autoNextTimer);
       autoNextTimer = setInterval(()=>{
         left--;
-        if(left<=0){
-          clearInterval(autoNextTimer);
-          autoNextTimer=null;
-          loadRandomDeck();
-        }else{
-          autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-        }
+        if(left<=0){ clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); }
+        else autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
       }, 1000);
     }catch{
       toast("保存エラーが発生しました。");
-    }finally{
-      setVoting(false);
-    }
+    }finally{ setVoting(false); }
   })
 );
 
@@ -695,7 +649,7 @@ $("#shareBtn").addEventListener("click", shareCurrentDeck);
 $("#reportBtn").addEventListener("click", async ()=>{
   if(!currentDeck) return toast("デッキが読み込まれていません");
   const btn = $("#reportBtn"); const orig = btn.textContent;
-  btn.textContent="送信中…"; btn.classList.add("primary","ghost");
+  btn.textContent="送信中…"; btn.classList.add("busy");
   try{
     const res = await fetch(FN_REPORT,{
       method:"POST",
@@ -705,13 +659,13 @@ $("#reportBtn").addEventListener("click", async ()=>{
     const j = await res.json().catch(()=> ({}));
     if(res.ok && j?.ok!==false){
       btn.textContent="完了！"; toast("報告ありがとうございました");
-      setTimeout(()=>{ btn.textContent=orig; btn.classList.remove("primary","ghost"); onSkip(); }, 900);
+      setTimeout(()=>{ btn.textContent=orig; btn.classList.remove("busy"); onSkip(); }, 900);
     }else{
-      btn.textContent=orig; btn.classList.remove("primary","ghost");
+      btn.textContent=orig; btn.classList.remove("busy");
       toast("報告に失敗しました");
     }
   }catch{
-    btn.textContent=orig; btn.classList.remove("primary","ghost");
+    btn.textContent=orig; btn.classList.remove("busy");
     toast("報告に失敗しました");
   }
 });
@@ -782,9 +736,9 @@ async function loadMine(){
     const item=document.createElement("div"); item.className="item";
     const a=document.createElement("a"); a.href=d.source_url; a.target="_blank"; a.rel="noopener noreferrer";
     a.textContent = idNum; // 1081165 だけ表示
-    const del=document.createElement("button"); del.className="small-btn"; del.textContent="削除";
+    const del=document.createElement("button"); del.className="btn btn-plain"; del.textContent="削除";
     del.addEventListener("click", ()=> deleteOwn(d.id, item));
-    const show=document.createElement("button"); show.className="small-btn"; show.textContent="表示";
+    const show=document.createElement("button"); show.className="btn btn-plain"; show.textContent="表示";
     show.addEventListener("click", async ()=> {
       const row = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("id", d.id).maybeSingle();
       if(row.data) await showDeckByRow(row.data,{showResults:false});
