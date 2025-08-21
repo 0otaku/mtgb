@@ -14,6 +14,7 @@
   --bg:#fff; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb;
   --brand:#d62828; --c1:#6EE7B7; --c2:#93C5FD; --c3:#FDE68A; --c4:#FCA5A5;
   --radius:14px;
+  --accent:#6366f1; --accent2:#8b5cf6; /* インディゴ→バイオレット */
 }
 *{box-sizing:border-box} html,body{height:100%}
 body{margin:0;font-family:"Inter","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--fg);background:var(--bg)}
@@ -87,9 +88,18 @@ iframe{width:100%;height:70vh;min-height:520px;border:0;display:block;background
 .hint{font-size:12px;color:var(--muted)}
 
 .action-row{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
-#nextBtn{font-weight:700;border:1px solid #111;background:#111;color:#fff;border-radius:10px;padding:8px 12px}
-#nextBtn.pulse{animation:pulse 1.6s ease-in-out infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(17,17,17,.35)}70%{box-shadow:0 0 0 10px rgba(17,17,17,0)}100%{box-shadow:0 0 0 0 rgba(17,17,17,0)}}
+#nextBtn{
+  font-weight:700; border:1px solid var(--accent);
+  background:linear-gradient(135deg, var(--accent), var(--accent2));
+  color:#fff; border-radius:10px; padding:8px 12px
+}
+#nextBtn:hover{ filter:brightness(1.03) }
+#nextBtn.pulse{ animation:nextPulse 1.8s ease-in-out infinite }
+@keyframes nextPulse{
+  0%{box-shadow:0 0 0 0 rgba(99,102,241,.45)}
+  70%{box-shadow:0 0 0 12px rgba(99,102,241,0)}
+  100%{box-shadow:0 0 0 0 rgba(99,102,241,0)}
+}
 
 .xbtn{display:inline-flex;align-items:center;gap:6px;font-weight:700;background:#000;color:#fff;border:1px solid #000;border-radius:999px;padding:7px 12px}
 .xbtn svg{width:14px;height:14px}
@@ -141,6 +151,17 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
   20%{opacity:1;transform:translate(-50%,0)}
   100%{opacity:0;transform:translate(-50%,-12px)}
 }
+
+/* 自分の登録 用ミニグラフ */
+.mini-wrap{flex:1; display:flex; align-items:center; gap:8px}
+.mini-bar{position:relative; height:10px; width:100%;
+  background:#f3f4f6; border:1px solid #e5e7eb; border-radius:6px; overflow:hidden}
+.mini-seg{position:absolute; top:0; bottom:0}
+.mini-seg.b1{background:var(--c1)} .mini-seg.b2{background:var(--c2)}
+.mini-seg.b3{background:var(--c3)} .mini-seg.b4{background:var(--c4)}
+.mini-overlay{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:11px; color:#111; background:rgba(255,255,255,.82); opacity:0; transition:opacity .15s}
+.mini-bar:hover .mini-overlay{opacity:1}
 
 </style>
 </head>
@@ -212,9 +233,9 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
       </div>
 
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <button id="shareBtn" class="xbtn" title="Xでシェア">
+        <button id="shareBtn" class="xbtn" title="シェア">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18.244 2H21l-6.52 7.455L22 22h-6.843l-4.68-6.105L4.96 22H2.2l7.06-8.07L2 2h6.94l4.26 5.64L18.244 2Zm-1.197 18.4h1.83L7.03 3.52H5.09l11.958 16.88Z"/></svg>
-          X でシェア
+          シェア
         </button>
         <button id="reportBtn" class="small-btn">削除希望</button>
       </div>
@@ -496,6 +517,7 @@ async function showDeckByRow(row,{showResults=false}={}){
   await loadMyVote();
 
   clearInterval(autoNextTimer); autoNextTimer=null; autoNextHint.textContent="";
+  nextBtn.classList.remove("pulse");   // ← 新しいデッキ表示でアニメ解除
 
   try{ await sb.rpc("log_impression",{ p_session:sid, p_deck: row.id }); }catch(_){}
   deckShownAtMs = performance.now();
@@ -561,6 +583,7 @@ for (const el of document.querySelectorAll(".chip[data-vote]")){
 
       markMyVote(bracket);
       resultsEl.style.display="flex";
+      nextBtn.classList.add("pulse");   // ← 追加：表示直後にアニメ開始
       await loadVotesAndRenderResults(true);
 
       rtLabel.style.display="inline"; rtLabel.textContent = `${rtSec}sec`;
@@ -688,26 +711,77 @@ $("#reloadMine").addEventListener("click", ()=> loadMine());
 async function loadMine(){
   const listEl=$("#mineList");
   listEl.innerHTML="読み込み中…";
-  const { data, error } = await sb.from("decks").select("id,source_url,deck_name,created_at").eq("created_by_session", sid).order("created_at",{ascending:false}).limit(50);
+  const { data, error } = await sb.from("decks")
+    .select("id,source_url,deck_name,created_at")
+    .eq("created_by_session", sid)
+    .order("created_at",{ascending:false})
+    .limit(50);
   if(error){ listEl.textContent="読み込みエラー"; return; }
   if(!data || data.length===0){ listEl.textContent="まだ登録がありません。"; return; }
+
+  // まとめて投票集計（成功すれば1クエリ）
+  const ids = data.map(d=>d.id);
+  const countsMap = {};  // deck_id -> [c1,c2,c3,c4]
+  try{
+    if(ids.length){
+      const { data: agg, error: aggErr } = await sb
+        .from("labels")
+        .select("deck_id, bracket, cnt:count()")
+        .in("deck_id", ids)
+        .group("deck_id, bracket");
+      if(!aggErr && Array.isArray(agg)){
+        for(const r of agg){
+          const arr = countsMap[r.deck_id] || (countsMap[r.deck_id]=[0,0,0,0]);
+          const i = (r.bracket|0)-1; if(i>=0 && i<4) arr[i] = Number(r.cnt)||0;
+        }
+      }
+    }
+  }catch{}
+
+  // フォールバック（環境によって group が使えない場合）
+  if(Object.keys(countsMap).length===0){
+    for(const d of data){
+      try{
+        const { data: rows } = await sb.from("labels")
+          .select("bracket, cnt:count()")
+          .eq("deck_id", d.id)
+          .group("bracket");
+        const arr=[0,0,0,0];
+        for(const r of (rows||[])){ const i=(r.bracket|0)-1; if(i>=0&&i<4) arr[i]=Number(r.cnt)||0; }
+        countsMap[d.id]=arr;
+      }catch{ countsMap[d.id]=[0,0,0,0]; }
+    }
+  }
+
   listEl.innerHTML="";
   for(const d of data){
     const idNum = toDeckId(d.source_url) || d.id;
     const item=document.createElement("div"); item.className="item";
-    const a=document.createElement("a"); a.href=d.source_url; a.target="_blank"; a.rel="noopener noreferrer"; a.textContent = idNum;
-    const del=document.createElement("button"); del.className="small-btn"; del.textContent="削除";
-    del.addEventListener("click", ()=> deleteOwn(d.id, item));
-    const show=document.createElement("button"); show.className="small-btn"; show.textContent="表示";
+
+    const a=document.createElement("a");
+    a.href=d.source_url; a.target="_blank"; a.rel="noopener noreferrer"; a.textContent = idNum;
+
+    // ミニ投票グラフ
+    const wrap=document.createElement("div"); wrap.className="mini-wrap";
+    const [c1,c2,c3,c4] = countsMap[d.id] || [0,0,0,0];
+    wrap.append( makeMiniBar(c1,c2,c3,c4) );
+
+    const show=document.createElement("button"); show.className="small-btn"; show.textContent="表示"; show.type="button";
     show.addEventListener("click", async ()=> {
       const row = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("id", d.id).maybeSingle();
       if(row.data) await showDeckByRow(row.data,{showResults:false});
       closeSheet();
     });
-    item.append(a, show, del);
+
+    const del=document.createElement("button"); del.className="small-btn"; del.textContent="削除"; del.type="button";
+    del.addEventListener("click", ()=> deleteOwn(d.id, item));
+
+    // 並び: [リンク][ミニグラフ][表示][削除]
+    item.append(a, wrap, show, del);
     listEl.appendChild(item);
   }
 }
+
 async function deleteOwn(deck_id, node){
   if(!confirm("この登録を削除しますか？（投票/通報も削除されます）")) return;
   try{
@@ -744,6 +818,22 @@ window.addEventListener('keydown', (e)=>{
 
 // ボタンtype保険：将来form導入時の誤submitを防止（既存動作は不変）
 for (const b of document.querySelectorAll('button:not([type])')) b.setAttribute('type','button');
+
+// 自分の登録のミニグラフを作る
+function makeMiniBar(c1,c2,c3,c4){
+  const total = Math.max(0, (c1|0)+(c2|0)+(c3|0)+(c4|0));
+  const per = total ? [c1/total*100,c2/total*100,c3/total*100,c4/total*100] : [0,0,0,0];
+  const bar = document.createElement('div'); bar.className='mini-bar';
+  const s1=document.createElement('div'); s1.className='mini-seg b1'; s1.style.left='0%'; s1.style.width=per[0]+'%';
+  const s2=document.createElement('div'); s2.className='mini-seg b2'; s2.style.left=per[0]+'%'; s2.style.width=per[1]+'%';
+  const s3=document.createElement('div'); s3.className='mini-seg b3'; s3.style.left=(per[0]+per[1])+'%'; s3.style.width=per[2]+'%';
+  const s4=document.createElement('div'); s4.className='mini-seg b4'; s4.style.left=(per[0]+per[1]+per[2])+'%'; s4.style.width=per[3]+'%';
+  const ov=document.createElement('div'); ov.className='mini-overlay';
+  const label = total ? `1 ${Math.round(per[0])}% ・ 2 ${Math.round(per[1])}% ・ 3 ${Math.round(per[2])}% ・ 4 ${Math.round(per[3])}%` : '投票なし';
+  ov.textContent = label; bar.title = label;
+  bar.append(s1,s2,s3,s4,ov);
+  return bar;
+}
 
 </script>
 </body>
