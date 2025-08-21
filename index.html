@@ -130,6 +130,18 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 .item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:8px}
 .item a{color:#111;text-decoration:none}
 .item a:hover{text-decoration:underline}
+
+.mana-pop{
+  position:fixed;left:50%;bottom:88px;transform:translateX(-50%);
+  background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 10px;
+  box-shadow:0 6px 24px rgba(0,0,0,.12);animation:mpop .9s ease forwards;z-index:60
+}
+@keyframes mpop{
+  0%{opacity:0;transform:translate(-50%,10px)}
+  20%{opacity:1;transform:translate(-50%,0)}
+  100%{opacity:0;transform:translate(-50%,-12px)}
+}
+
 </style>
 </head>
 <body>
@@ -277,7 +289,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
   </div>
 </aside>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -601,7 +613,7 @@ function shareCurrentDeck(){
   const text = `このデッキのブラケットは？\n${url}\n#みんなでブラケット診断`;
   const tw = new URL("https://x.com/intent/tweet"); tw.searchParams.set("text", text);
   const w = window.open(tw.toString(), "_blank", "noopener,noreferrer");
-  if (!w) toast("ポップアップがブロックされました");
+  if (!w) { location.href = tw.toString(); } // ← フォールバック
 }
 $("#shareBtn").addEventListener("click", shareCurrentDeck);
 
@@ -716,6 +728,23 @@ if (paramDeck) {
     catch { await loadRandomDeck(); }
   } else { await loadRandomDeck(); }
 } else { await loadRandomDeck(); }
+
+// キーボード操作: 1-4 で投票 / Sでスキップ / Nで次へ
+window.addEventListener('keydown', (e)=>{
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (['1','2','3','4'].includes(e.key)) {
+    document.querySelector(`.chip[data-vote="${e.key}"]`)?.click();
+  } else if (e.key.toLowerCase()==='s') {
+    document.getElementById('skipBtn')?.click();
+  } else if (e.key.toLowerCase()==='n') {
+    document.getElementById('nextBtn')?.click();
+  }
+});
+
+// ボタンtype保険：将来form導入時の誤submitを防止（既存動作は不変）
+for (const b of document.querySelectorAll('button:not([type])')) b.setAttribute('type','button');
+
 </script>
 </body>
 </html>
