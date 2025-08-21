@@ -24,17 +24,11 @@
   details>summary{cursor:pointer;user-select:none}
   .close-btn{margin-left:auto}
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f3f4f6;border:1px solid #e5e7eb}
-  /* 右下トースト */
-  #toast{position:fixed;right:16px;bottom:16px;background:#111;color:#fff;padding:8px 10px;border-radius:10px;display:none;z-index:100}
 </style>
 <body>
   <div class="row">
     <h1>管理</h1>
-    <label>Admin Token:
-      <input id="token" type="password" placeholder="保存されます" style="min-width:320px"
-             autocomplete="off" autocapitalize="off" spellcheck="false">
-    </label>
-    <button id="toggleToken" type="button" title="表示/非表示">表示</button>
+    <label>Admin Token: <input id="token" placeholder="保存されます" style="min-width:320px"></label>
   </div>
 
   <!-- ====== 設定 ====== -->
@@ -42,9 +36,10 @@
     <summary><h2>設定</h2></summary>
     <div class="row">
       <label>通報しきい値 <input id="th" type="number" value="5" style="width:90px"></label>
-      <button id="btnLoadSet" type="button">読み込み</button>
-      <button id="btnSaveSet" class="ok" type="button">保存</button>
-      <button class="close-btn" type="button" onclick="this.closest('details').open=false">閉じる</button>
+      <button id="btnLoadSet">読み込み</button>
+      <button id="btnSaveSet" class="ok">保存</button>
+      <!-- 設定はセクション閉鎖不要（結果ボックスも無いため no-op） -->
+      <button class="close-btn" onclick="/* no-op */">閉じる</button>
     </div>
     <div class="muted">※ この件数以上の通報で該当デッキを自動削除します（admin2+SQLが必要）</div>
   </details>
@@ -58,8 +53,9 @@
       <label>件数 <input id="limit" type="number" value="50" style="width:90px"></label>
       <label>From <input id="from" type="date"></label>
       <label>To <input id="to" type="date"></label>
-      <button id="btnLoadReports" type="button">読み込み</button>
-      <button class="close-btn" type="button" onclick="this.closest('details').open=false">閉じる</button>
+      <button id="btnLoadReports">読み込み</button>
+      <!-- 結果だけ消す -->
+      <button class="close-btn" onclick="clearNode('reportList')">閉じる</button>
     </div>
     <div id="reportList" class="grid"></div>
   </details>
@@ -71,8 +67,9 @@
     <div class="card">
       <div class="row">
         <label>過去 <input id="days_rt" type="number" value="7" style="width:90px"></label> 日
-        <button id="btnLoadRT" type="button">反応速度 読み込み</button>
-        <button class="close-btn" type="button" onclick="this.closest('.card').style.display='none'">閉じる</button>
+        <button id="btnLoadRT">反応速度 読み込み</button>
+        <!-- 結果だけ消す -->
+        <button class="close-btn" onclick="clearNode('rtBox')">閉じる</button>
       </div>
       <div id="rtBox" class="grid"></div>
     </div>
@@ -83,8 +80,9 @@
         <label><select id="grain">
           <option value="hour">時間</option><option value="day">日</option>
         </select></label>
-        <button id="btnLoadImp" type="button">アクセス数 読み込み</button>
-        <button class="close-btn" type="button" onclick="this.closest('.card').style.display='none'">閉じる</button>
+        <button id="btnLoadImp">アクセス数 読み込み</button>
+        <!-- 結果だけ消す -->
+        <button class="close-btn" onclick="clearNode('impBox')">閉じる</button>
       </div>
       <div id="impBox" class="grid"></div>
     </div>
@@ -93,8 +91,9 @@
       <div class="row">
         <label>過去 <input id="days_vbd" type="number" value="7" style="width:90px"></label> 日
         <label>件数 <input id="vbd_limit" type="number" value="100" style="width:90px"></label>
-        <button id="btnLoadVBD" type="button">デッキ別投票数 読み込み</button>
-        <button class="close-btn" type="button" onclick="this.closest('.card').style.display='none'">閉じる</button>
+        <button id="btnLoadVBD">デッキ別投票数 読み込み</button>
+        <!-- 結果だけ消す -->
+        <button class="close-btn" onclick="clearNode('vbdBox')">閉じる</button>
       </div>
       <div id="vbdBox" class="grid"></div>
     </div>
@@ -103,7 +102,11 @@
   <!-- ====== ブロック一覧 ====== -->
   <details class="section" open>
     <summary><h2>ブロック一覧</h2></summary>
-    <div class="row"><button id="btnLoadBL" type="button">読み込み</button><button class="close-btn" type="button" onclick="this.closest('details').open=false">閉じる</button></div>
+    <div class="row">
+      <button id="btnLoadBL">読み込み</button>
+      <!-- 結果だけ消す -->
+      <button class="close-btn" onclick="clearNode('blocklist')">閉じる</button>
+    </div>
     <div class="grid" id="blocklist"></div>
   </details>
 
@@ -113,8 +116,9 @@
     <div class="row">
       <label>過去 <input id="days_rep" type="number" value="7" style="width:90px"></label> 日間
       <label>件数 <input id="limit_rep" type="number" value="100" style="width:90px"></label>
-      <button id="btnLoadRep" type="button">読み込み</button>
-      <button class="close-btn" type="button" onclick="this.closest('details').open=false">閉じる</button>
+      <button id="btnLoadRep">読み込み</button>
+      <!-- 結果だけ消す -->
+      <button class="close-btn" onclick="clearNode('reporters')">閉じる</button>
     </div>
     <div id="reporters" class="grid"></div>
   </details>
@@ -124,8 +128,9 @@
     <div class="row">
       <label>過去 <input id="days_reg" type="number" value="7" style="width:90px"></label> 日間
       <label>件数 <input id="limit_reg" type="number" value="100" style="width:90px"></label>
-      <button id="btnLoadReg" type="button">読み込み</button>
-      <button class="close-btn" type="button" onclick="this.closest('details').open=false">閉じる</button>
+      <button id="btnLoadReg">読み込み</button>
+      <!-- 結果だけ消す -->
+      <button class="close-btn" onclick="clearNode('registrants')">閉じる</button>
     </div>
     <div id="registrants" class="grid"></div>
   </details>
@@ -136,13 +141,12 @@
     <div class="row">
       <label>過去 <input id="days_del" type="number" value="30" style="width:90px"></label> 日間
       <label>件数 <input id="limit_del" type="number" value="100" style="width:90px"></label>
-      <button id="btnLoadDel" type="button">読み込み</button>
-      <button class="close-btn" type="button" onclick="this.closest('details').open=false">閉じる</button>
+      <button id="btnLoadDel">読み込み</button>
+      <!-- 結果だけ消す -->
+      <button class="close-btn" onclick="clearNode('deletedList')">閉じる</button>
     </div>
     <div id="deletedList" class="grid"></div>
   </details>
-
-  <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
 /* ====== 接続設定 ====== */
@@ -150,61 +154,54 @@ const ADMIN2_URL = "https://onzljxnqlrohkzsfxqbh.supabase.co/functions/v1/admin2
 const $id = (id)=>document.getElementById(id);
 $id("token").value = localStorage.getItem("admin_token") || "";
 $id("token").addEventListener("input",()=>localStorage.setItem("admin_token",$id("token").value));
-$id("toggleToken").onclick = ()=>{
-  const i = $id("token");
-  i.type = (i.type === "password" ? "text" : "password");
-  $id("toggleToken").textContent = (i.type === "password" ? "表示" : "隠す");
-};
-const toast = (m)=>{ const t=$id("toast"); t.textContent=m; t.style.display="block"; clearTimeout(t._t); t._t=setTimeout(()=>t.style.display="none", 1600); };
 
-/* ====== 汎用API（タイムアウト/リトライ付） ====== */
+/* ====== 共通ユーティリティ ====== */
+// 結果ボックスを空に（セクションは閉じない）
+function clearNode(id){ const el=document.getElementById(id); if(el) el.innerHTML=''; }
+// details の▼を無効化（セクション自体は常に開いたまま）
+document.querySelectorAll('details.section > summary').forEach(s=>{
+  s.addEventListener('click', e=> e.preventDefault());
+});
+
+/* JST（東京）で日時を文字列化 */
+function fmtDate(s){
+  try{
+    return new Date(s).toLocaleString('ja-JP',{ timeZone:'Asia/Tokyo', hour12:false });
+  }catch{ return s; }
+}
+function clearBox(node){ node.innerHTML=""; }
+
+/* ====== 汎用API ====== */
 async function callAdmin2(query, opt={}){
   const token = $id("token").value.trim();
-  if(!token){ toast("Admin Token を入力してください"); throw new Error("no token"); }
+  if(!token){ alert("Admin Token を入力してください"); throw new Error("no token"); }
   const url = (query.startsWith("http")?query:`${ADMIN2_URL}${query}`);
   const init = {
     method: opt.method||"GET",
-    headers: { "x-admin-token": token, "accept":"application/json", "content-type":"application/json" },
-    body: opt.body ? JSON.stringify(opt.body) : undefined,
-    cache: "no-store",
+    headers: { "x-admin-token": token, "content-type":"application/json" }
   };
-  const retriable = new Set([429,500,502,503,504]);
-  const attempt = async (i)=>{
-    const controller = new AbortController();
-    const t = setTimeout(()=>controller.abort(), 15000);
-    try{
-      const res = await fetch(url, { ...init, signal: controller.signal });
-      const txt = await res.text();
-      let json; try{ json = JSON.parse(txt); }catch{ json = { ok:false, error:txt } }
-      if(!res.ok || json?.ok===false){
-        if(retriable.has(res.status) && i<2){ await new Promise(r=>setTimeout(r, 400*(i+1))); return attempt(i+1); }
-        throw new Error(json?.error||res.statusText);
-      }
-      return json;
-    }finally{ clearTimeout(t); }
-  };
-  return attempt(0);
+  if(opt.body) init.body = JSON.stringify(opt.body);
+  const res = await fetch(url, init);
+  const txt = await res.text();
+  let json;
+  try{ json = JSON.parse(txt); }catch{ json = { ok:false, error:txt } }
+  if(!res.ok || json?.ok===false) throw new Error(json?.error||res.statusText);
+  return json;
 }
-function fmtDate(s){
-  try{ return new Date(s).toLocaleString("ja-JP", { timeZone:"Asia/Tokyo", hour12:false }); }
-  catch{ return s; }
-}
-function clearBox(node){ node.innerHTML=""; }
 
 /* ====== 設定 ====== */
 async function loadSettings(){
   try{
     const j = await callAdmin2(`?view=settings`);
     $id("th").value = j.data?.report_delete_threshold?.value ?? 5;
-    toast("設定を読み込みました");
-  }catch(e){ toast("設定取得エラー: "+e.message); }
+  }catch(e){ alert("設定取得エラー: "+e.message); }
 }
 async function saveSettings(){
   try{
     const n = Number($id("th").value);
     await callAdmin2("",{ method:"POST", body:{ action:"set_settings", report_delete_threshold:n }});
-    toast("保存しました");
-  }catch(e){ toast("保存エラー: "+e.message); }
+    alert("保存しました");
+  }catch(e){ alert("保存エラー: "+e.message); }
 }
 $id("btnLoadSet").onclick = loadSettings;
 $id("btnSaveSet").onclick = saveSettings;
@@ -235,18 +232,16 @@ async function loadReports(){
       const row2 = document.createElement("div"); row2.className="row muted";
       row2.textContent = `通報 ${r.report_count} / 最終 ${fmtDate(r.latest_reported_at)}`;
       const btns = document.createElement("div"); btns.className="btns";
-      const btnDel = document.createElement("button"); btnDel.className="danger"; btnDel.textContent="削除"; btnDel.type="button";
+      const btnDel = document.createElement("button"); btnDel.className="danger"; btnDel.textContent="削除";
       btnDel.onclick = async ()=>{
-        const typed = prompt(`本当に削除しますか？確認のため deck_id を入力: ${r.deck_id}`);
-        if(typed !== String(r.deck_id)) return;
-        try{ btnDel.disabled = true; await callAdmin2("",{method:"POST", body:{action:"delete_deck", deck_id:r.deck_id}}); div.remove(); toast("削除しました"); }
-        catch(e){ toast("削除失敗: "+e.message); }
-        finally{ btnDel.disabled = false; }
+        if(!confirm("このデッキを削除しますか？")) return;
+        try{ await callAdmin2("",{method:"POST", body:{action:"delete_deck", deck_id:r.deck_id}}); div.remove(); }
+        catch(e){ alert("削除失敗: "+e.message); }
       };
-      const btnClr = document.createElement("button"); btnClr.className="warn"; btnClr.textContent="通報クリア"; btnClr.type="button";
+      const btnClr = document.createElement("button"); btnClr.className="warn"; btnClr.textContent="通報クリア";
       btnClr.onclick = async ()=>{
-        try{ await callAdmin2("",{method:"POST", body:{action:"clear_reports", deck_id:r.deck_id}}); toast("クリアしました"); }
-        catch(e){ toast("失敗: "+e.message); }
+        try{ await callAdmin2("",{method:"POST", body:{action:"clear_reports", deck_id:r.deck_id}}); alert("クリアしました"); }
+        catch(e){ alert("失敗: "+e.message); }
       };
       btns.append(btnDel, btnClr);
       div.append(row1,row2,btns);
@@ -256,7 +251,7 @@ async function loadReports(){
 }
 $id("btnLoadReports").onclick = loadReports;
 
-/* ====== アナリティクス ====== */
+/* ====== アナリティクス：反応速度 ====== */
 async function loadRT(){
   const box=$id("rtBox"); clearBox(box);
   try{
@@ -264,15 +259,29 @@ async function loadRT(){
     const j = await callAdmin2(`?view=rt_global&days=${days}`);
     const res=j.data||[];
     if(!res.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+
     for(const r of res){
+      // 異なるキー・型に頑健化
+      const avgNum = Number(r.avg_rt ?? r.avg ?? r.avg_sec ?? 0);
+      const avgTxt = isFinite(avgNum) && avgNum>0 ? avgNum.toFixed(1) : String(r.avg_rt ?? r.avg ?? "0.0");
       const el=document.createElement("div"); el.className="card";
-      el.innerHTML = `<div class="row"><b>${r.label}</b><span class="muted">avg ${r.avg_rt.toFixed?.(1) ?? r.avg_rt}s / n=${r.n}</span></div>`;
+      el.innerHTML = `<div class="row"><b>${r.label||("過去"+days+"日")}</b><span class="muted">avg ${avgTxt}s / n=${r.n ?? "-"}</span></div>`;
+
+      if(!(isFinite(avgNum) && avgNum>0) && (r.n>0)){
+        const warn=document.createElement("div");
+        warn.className="muted";
+        warn.textContent="※ 平均が 0 秒です。admin2 側の RT 集計ロジック（rt_sec 集計）をご確認ください。";
+        el.append(warn);
+      }
       box.append(el);
     }
-  }catch(e){ box.innerHTML=`<div class="muted">未対応またはエラー：${e.message}</div>`; }
+  }catch(e){
+    box.innerHTML=`<div class="muted">未対応またはエラー：${e.message}</div>`;
+  }
 }
 $id("btnLoadRT").onclick = loadRT;
 
+/* ====== アナリティクス：アクセス数 ====== */
 async function loadImpressions(){
   const box=$id("impBox"); clearBox(box);
   try{
@@ -281,15 +290,26 @@ async function loadImpressions(){
     const j = await callAdmin2(`?view=impressions&days=${days}&grain=${grain}`);
     const res = j.data||[];
     if(!res.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+
+    // "YYYY-MM-DD HH:MM"（UTC想定）や ISO を JST に
+    function bucketToJSTLabel(b){
+      const s = String(b);
+      const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):?(\d{2})?$/);
+      const d = m ? new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +(m[5]||0))) : new Date(s);
+      return d.toLocaleString('ja-JP',{ timeZone:'Asia/Tokyo', hour12:false });
+    }
+
     for(const r of res){
       const el=document.createElement("div"); el.className="card";
-      el.innerHTML = `<div class="row"><b>${r.bucket}</b><span class="muted">${r.count} 件</span></div>`;
+      const label = bucketToJSTLabel(r.bucket);
+      el.innerHTML = `<div class="row"><b>${label}</b><span class="muted">${r.count} 件</span></div>`;
       box.append(el);
     }
   }catch(e){ box.innerHTML=`<div class="muted">未対応またはエラー：${e.message}</div>`; }
 }
 $id("btnLoadImp").onclick = loadImpressions;
 
+/* ====== アナリティクス：デッキ別投票数 ====== */
 async function loadVBD(){
   const box=$id("vbdBox"); clearBox(box);
   try{
@@ -320,12 +340,12 @@ async function loadBlocklist(){
     for(const r of ips){
       const row=document.createElement("div"); row.className="row";
       row.innerHTML=`<span class="mono">${r.ip}</span>`;
-      const un=document.createElement("button"); un.textContent="解除"; un.onclick=()=> postUnblockIp(r.ip,row); un.type="button";
+      const un=document.createElement("button"); un.textContent="解除"; un.onclick=()=> postUnblockIp(r.ip,row);
       row.append(un); ipList.append(row);
     }
     const addRow=document.createElement("div"); addRow.className="row";
     const ipIn=document.createElement("input"); ipIn.placeholder="IP";
-    const add=document.createElement("button"); add.textContent="IPブロック"; add.onclick=()=> postBlockIp(ipIn.value, ipList); add.type="button";
+    const add=document.createElement("button"); add.textContent="IPブロック"; add.onclick=()=> postBlockIp(ipIn.value, ipList);
     addRow.append(ipIn,add); ipCard.append(ipList,addRow);
 
     const sidCard=document.createElement("div"); sidCard.className="card";
@@ -334,21 +354,21 @@ async function loadBlocklist(){
     for(const r of sids){
       const row=document.createElement("div"); row.className="row";
       row.innerHTML=`<span class="mono">${r.session_id}</span>`;
-      const un=document.createElement("button"); un.textContent="解除"; un.onclick=()=> postUnblockSession(r.session_id,row); un.type="button";
+      const un=document.createElement("button"); un.textContent="解除"; un.onclick=()=> postUnblockSession(r.session_id,row);
       row.append(un); sidList.append(row);
     }
     const addRow2=document.createElement("div"); addRow2.className="row";
     const sidIn=document.createElement("input"); sidIn.placeholder="Session";
-    const add2=document.createElement("button"); add2.textContent="Sessionブロック"; add2.onclick=()=> postBlockSession(sidIn.value, sidList); add2.type="button";
+    const add2=document.createElement("button"); add2.textContent="Sessionブロック"; add2.onclick=()=> postBlockSession(sidIn.value, sidList);
     addRow2.append(sidIn,add2); sidCard.append(sidList,addRow2);
 
     box.append(ipCard,sidCard);
   }catch(e){ box.innerHTML=`<div class="muted">エラー：${e.message}</div>`; }
 }
-async function postBlockIp(ip){ if(!ip) return; try{ await callAdmin2("",{method:"POST",body:{action:"block_ip",ip}}); loadBlocklist(); toast("IPをブロックしました"); }catch(e){ toast(e.message); } }
-async function postUnblockIp(ip, row){ try{ await callAdmin2("",{method:"POST",body:{action:"unblock_ip",ip}}); row.remove(); toast("IPを解除しました"); }catch(e){ toast(e.message); } }
-async function postBlockSession(session_id){ if(!session_id) return; try{ await callAdmin2("",{method:"POST",body:{action:"block_session",session_id}}); loadBlocklist(); toast("Sessionをブロックしました"); }catch(e){ toast(e.message); } }
-async function postUnblockSession(session_id, row){ try{ await callAdmin2("",{method:"POST",body:{action:"unblock_session",session_id}}); row.remove(); toast("Sessionを解除しました"); }catch(e){ toast(e.message); } }
+async function postBlockIp(ip, list){ if(!ip) return; try{ await callAdmin2("",{method:"POST",body:{action:"block_ip",ip}}); loadBlocklist(); }catch(e){ alert(e.message); } }
+async function postUnblockIp(ip, row){ try{ await callAdmin2("",{method:"POST",body:{action:"unblock_ip",ip}}); row.remove(); }catch(e){ alert(e.message); } }
+async function postBlockSession(session_id){ if(!session_id) return; try{ await callAdmin2("",{method:"POST",body:{action:"block_session",session_id}}); loadBlocklist(); }catch(e){ alert(e.message); } }
+async function postUnblockSession(session_id, row){ try{ await callAdmin2("",{method:"POST",body:{action:"unblock_session",session_id}}); row.remove(); }catch(e){ alert(e.message); } }
 $id("btnLoadBL").onclick = loadBlocklist;
 
 /* ====== ユーザー上位 ====== */
@@ -363,8 +383,8 @@ async function loadReporters(){
       const el=document.createElement("div"); el.className="card";
       el.innerHTML=`<div class="row"><span class="mono">${r.ip||"(no ip)"} / ${r.session_id||"(no session)"}</span><span class="muted">件数 ${r.count} / 最終 ${fmtDate(r.last)}</span></div>`;
       const btns=document.createElement("div"); btns.className="btns";
-      if(r.ip){ const b=document.createElement("button"); b.textContent=r.blocked_ip?"IP解除":"IPブロック"; b.onclick=()=> (r.blocked_ip?postUnblockIp(r.ip,el):postBlockIp(r.ip)); b.type="button"; btns.append(b); }
-      if(r.session_id){ const b2=document.createElement("button"); b2.textContent=r.blocked_session?"Session解除":"Sessionブロック"; b2.onclick=()=> (r.blocked_session?postUnblockSession(r.session_id,el):postBlockSession(r.session_id)); b2.type="button"; btns.append(b2); }
+      if(r.ip){ const b=document.createElement("button"); b.textContent=r.blocked_ip?"IP解除":"IPブロック"; b.onclick=()=> (r.blocked_ip?postUnblockIp(r.ip,el):postBlockIp(r.ip,box)); btns.append(b); }
+      if(r.session_id){ const b2=document.createElement("button"); b2.textContent=r.blocked_session?"Session解除":"Sessionブロック"; b2.onclick=()=> (r.blocked_session?postUnblockSession(r.session_id,el):postBlockSession(r.session_id)); btns.append(b2); }
       el.append(btns); box.append(el);
     }
   }catch(e){ box.innerHTML=`<div class="muted">エラー：${e.message}</div>`; }
@@ -382,8 +402,8 @@ async function loadRegistrants(){
       const el=document.createElement("div"); el.className="card";
       el.innerHTML=`<div class="row"><span class="mono">${r.ip||"(no ip)"} / ${r.session_id||"(no session)"}</span><span class="muted">件数 ${r.count} / 最終 ${fmtDate(r.last)}</span></div>`;
       const btns=document.createElement("div"); btns.className="btns";
-      if(r.ip){ const b=document.createElement("button"); b.textContent=r.blocked_ip?"IP解除":"IPブロック"; b.onclick=()=> (r.blocked_ip?postUnblockIp(r.ip,el):postBlockIp(r.ip)); b.type="button"; btns.append(b); }
-      if(r.session_id){ const b2=document.createElement("button"); b2.textContent=r.blocked_session?"Session解除":"Sessionブロック"; b2.onclick=()=> (r.blocked_session?postUnblockSession(r.session_id,el):postBlockSession(r.session_id)); b2.type="button"; btns.append(b2); }
+      if(r.ip){ const b=document.createElement("button"); b.textContent=r.blocked_ip?"IP解除":"IPブロック"; b.onclick=()=> (r.blocked_ip?postUnblockIp(r.ip,el):postBlockIp(r.ip,box)); btns.append(b); }
+      if(r.session_id){ const b2=document.createElement("button"); b2.textContent=r.blocked_session?"Session解除":"Sessionブロック"; b2.onclick=()=> (r.blocked_session?postUnblockSession(r.session_id,el):postBlockSession(r.session_id)); btns.append(b2); }
       el.append(btns); box.append(el);
     }
   }catch(e){ box.innerHTML=`<div class="muted">エラー：${e.message}</div>`; }
@@ -405,8 +425,8 @@ async function loadDeleted(){
       row1.append(a); row1.insertAdjacentHTML("beforeend", `<span class="pill mono">deck ${r.deck_id||"-"}</span>`);
       const row2=document.createElement("div"); row2.className="row muted";
       row2.textContent=`削除: ${fmtDate(r.deleted_at)} / 理由: ${r.reason||"-"} / by ${r.deleted_by||"-"}`;
-      const btn=document.createElement("button"); btn.textContent="復旧"; btn.className="ok"; btn.type="button";
-      btn.onclick=async()=>{ try{ await callAdmin2("",{method:"POST",body:{action:"restore_deck", log_id:r.id}}); el.remove(); toast("復旧しました"); }catch(e){ toast("復旧失敗: "+e.message); } };
+      const btn=document.createElement("button"); btn.textContent="復旧"; btn.className="ok";
+      btn.onclick=async()=>{ try{ await callAdmin2("",{method:"POST",body:{action:"restore_deck", log_id:r.id}}); el.remove(); }catch(e){ alert("復旧失敗: "+e.message); } };
       el.append(row1,row2,btn); box.append(el);
     }
   }catch(e){ box.innerHTML=`<div class="muted">エラー：${e.message}</div>`; }
