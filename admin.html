@@ -28,6 +28,17 @@
     <label>Admin Token: <input id="token" placeholder="保存されます" style="min-width:260px"></label>
   </div>
 
+  <!-- ▼ 全体反応速度 -->
+  <div class="section">
+    <h2>全体反応速度</h2>
+    <div class="row">
+      <label>過去 <input id="days_stats" type="number" value="7" style="width:90px"></label> 日
+      <button id="btn_stats">取得</button>
+    </div>
+    <div id="stats_out" class="card" style="margin-top:8px">—</div>
+  </div>
+
+  <!-- ▼ 設定 -->
   <div class="section">
     <h2>設定</h2>
     <div class="row">
@@ -38,6 +49,7 @@
     <div class="muted">※ この件数以上の通報で該当デッキを自動削除します</div>
   </div>
 
+  <!-- ▼ デッキ一覧（デッキ別 反応速度の期間指定付き） -->
   <div class="section">
     <h2>デッキ一覧</h2>
     <div class="row">
@@ -48,9 +60,14 @@
       <label>Offset <input id="doffset" type="number" value="0" style="width:90px"></label>
       <button id="dload">読み込み</button>
     </div>
+    <div class="row" style="margin-top:6px">
+      <label>反応速度：過去 <input id="spd_days" type="number" value="14" style="width:90px"></label> 日
+      <button id="spd_reload">速度を更新</button>
+    </div>
     <div id="dlist" class="grid scroll-panel"></div>
   </div>
 
+  <!-- ▼ 通報一覧 -->
   <div class="section">
     <h2>通報一覧</h2>
     <div class="row">
@@ -64,6 +81,7 @@
     <div id="list" class="grid scroll-panel"></div>
   </div>
 
+  <!-- ▼ 通報者上位 -->
   <div class="section">
     <h2>通報者（上位）</h2>
     <div class="row">
@@ -74,6 +92,7 @@
     <div id="reporters" class="grid scroll-panel"></div>
   </div>
 
+  <!-- ▼ 登録者上位 -->
   <div class="section">
     <h2>登録者（上位）</h2>
     <div class="row">
@@ -84,6 +103,7 @@
     <div id="registrants" class="grid scroll-panel"></div>
   </div>
 
+  <!-- ▼ ブロック一覧 -->
   <div class="section">
     <h2>ブロック一覧</h2>
     <div class="row"><button id="loadBL">更新</button></div>
@@ -91,11 +111,13 @@
   </div>
 
 <script>
+/* ==== 設定 ==== */
 const FN = "https://onzljxnqlrohkzsfxqbh.supabase.co/functions/v1/admin2";
 const $ = (id)=>document.getElementById(id);
 $("token").value = localStorage.getItem("admin_token") || "";
 $("token").addEventListener('change',()=>localStorage.setItem("admin_token",$("token").value));
 
+/* ==== ボタン紐付け ==== */
 $("loadSet").onclick = loadSettings;
 $("saveSet").onclick = saveSettings;
 $("dload").onclick = loadDecks;
@@ -104,14 +126,19 @@ $("loadRep").onclick = loadReporters;
 $("loadReg").onclick = loadRegistrants;
 $("loadBL").onclick = loadBlocklist;
 
+/* ==== 共通 API ヘルパ ==== */
 async function api(pathOrQuery, opts={}){
   const token=$("token").value.trim(); if(!token){ alert("Admin Tokenを入力してください"); throw new Error('no token'); }
   const url = pathOrQuery.startsWith("http") ? pathOrQuery : `${FN}${pathOrQuery}`;
   const r = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), "x-admin-token": token } });
-  if(!r.ok){ const t = await r.text().catch(()=> ""); throw new Error(t || `HTTP ${r.status}`); }
+  if(!r.ok){
+    const t = await r.text().catch(()=> "");
+    throw new Error(t || `HTTP ${r.status}`);
+  }
   return r.json();
 }
 
+/* ==== 設定（取得・保存） ==== */
 async function loadSettings(){
   try{
     const j = await api("?view=settings", { method:"GET" });
@@ -133,7 +160,7 @@ async function saveSettings(){
   }
 }
 
-/* デッキ一覧 */
+/* ==== デッキ一覧 ==== */
 async function loadDecks(){
   const q = $("dq").value.trim();
   const limit = $("dlimit").value || "50";
@@ -149,23 +176,29 @@ async function loadDecks(){
     L.innerHTML = (j.data||[]).map(x=>`
       <div class="card">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-          <div>
+          <div style="min-width:0">
             <div><b>${x.deck_name || '(名称なし)'}</b></div>
             <div class="muted">登録: ${fmt(x.created_at)} / 公開日: ${x.registered_at||'—'} / 通報: ${x.report_count||0}件</div>
             <div class="muted">votes: [1:${x.votes?.b1||0}] [2:${x.votes?.b2||0}] [3:${x.votes?.b3||0}] [4:${x.votes?.b4||0}]</div>
             <div><a class="link mono" href="${x.source_url}" target="_blank" rel="noopener">${x.source_url}</a></div>
             <div class="muted">IP: <span class="mono">${x.created_by_ip||'-'}</span> / SID: <span class="mono">${x.created_by_session||'-'}</span></div>
+            <div class="muted" data-deck-id="${x.id}">速度: 読み込み中…</div>
           </div>
-          <div class="btns"><button class="danger" onclick="delDeck('${x.id}','decks')" title="ラベル/通報も削除">削除</button></div>
+          <div class="btns">
+            <button class="danger" onclick="delDeck('${x.id}','decks')" title="ラベル/通報も削除">削除</button>
+          </div>
         </div>
       </div>
     `).join('') || '<div class="muted">該当なし</div>';
+
+    // デッキ別 速度を更新
+    if (window.__reloadSpeeds) window.__reloadSpeeds();
   }catch(e){
     alert("読み込みに失敗しました: " + (e?.message||e));
   }
 }
 
-/* 通報一覧 */
+/* ==== 通報一覧 ==== */
 async function loadReports(){
   const q = $("q").value.trim();
   const min = $("min").value || "1";
@@ -193,7 +226,7 @@ async function loadReports(){
   `).join('') || '<div class="muted">該当なし</div>';
 }
 
-/* 削除・通報クリア */
+/* ==== 削除・通報クリア ==== */
 async function apiPost(payload){ return api("", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }); }
 async function delDeck(id, origin){
   if(!confirm("このデッキを削除しますか？（投票・通報も消えます）")) return;
@@ -208,7 +241,7 @@ async function clearReports(id){
   loadReports();
 }
 
-/* 通報者（上位） */
+/* ==== 通報者（上位） ==== */
 async function loadReporters(){
   const limit = $("limit_rep").value || "100";
   const days = $("days").value || "7";
@@ -231,7 +264,7 @@ async function loadReporters(){
   `).join('') || '<div class="muted">該当なし</div>';
 }
 
-/* 登録者（上位） */
+/* ==== 登録者（上位） ==== */
 async function loadRegistrants(){
   const limit = $("limit_reg").value || "100";
   const days = $("days_reg").value || "7";
@@ -254,7 +287,7 @@ async function loadRegistrants(){
   `).join('') || '<div class="muted">該当なし</div>';
 }
 
-/* ブロック一覧 */
+/* ==== ブロック一覧 ==== */
 async function blockIp(ip){ await apiPost({ action:"block_ip", ip }); loadReporters(); loadRegistrants(); loadBlocklist(); }
 async function unblockIp(ip){ await apiPost({ action:"unblock_ip", ip }); loadReporters(); loadRegistrants(); loadBlocklist(); }
 async function blockSession(session_id){ await apiPost({ action:"block_session", session_id }); loadReporters(); loadRegistrants(); loadBlocklist(); }
@@ -285,7 +318,48 @@ async function loadBlocklist(){
   `;
 }
 
+/* 初期：設定 & 全体速度 */
 loadSettings();
+</script>
+
+<!-- Supabaseで統計RPCを叩く（type=module 別スクリプト） -->
+<script type="module">
+  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+  const SUPABASE_URL  = "https://onzljxnqlrohkzsfxqbh.supabase.co";
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemxqeG5xbHJvaGt6c2Z4cWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NzUzNTksImV4cCI6MjA3MTE1MTM1OX0.eLAP_-PtVm6tBFFCNfOVsTqEcvtZK3x3QFFNeRpxuj8";
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession:false, autoRefreshToken:false } });
+
+  async function loadStats(){
+    const days = Number(document.getElementById('days_stats').value || 7);
+    const out = document.getElementById('stats_out');
+    const { data, error } = await sb.rpc('vote_time_stats', { p_days: days });
+    if (error) { out.textContent = '取得エラー'; return; }
+    const a = (data?.avg_sec ?? 0).toFixed(2);
+    const m = (data?.median_sec ?? 0).toFixed(2);
+    const c = (data?.cnt ?? 0);
+    out.textContent = `平均 ${a}s / 中央 ${m}s（件数: ${c}、過去${days}日）`;
+  }
+  document.getElementById('btn_stats').addEventListener('click', loadStats);
+  loadStats();
+
+  async function reloadSpeeds(){
+    const days = Number(document.getElementById('spd_days')?.value || 14);
+    const nodes = document.querySelectorAll('[data-deck-id]');
+    for (const el of nodes){
+      const id = el.getAttribute('data-deck-id');
+      try{
+        const { data, error } = await sb.rpc('vote_time_stats_deck', { p_deck: id, p_days: days });
+        if (error) { el.textContent = '速度: 取得エラー'; continue; }
+        const a = (data?.avg_sec ?? 0).toFixed(2);
+        const m = (data?.median_sec ?? 0).toFixed(2);
+        const c = (data?.cnt ?? 0);
+        el.textContent = `速度: 平均 ${a}s / 中央 ${m}s（${c}件・過去${days}日）`;
+      }catch{ el.textContent = '速度: 取得エラー'; }
+    }
+  }
+  document.getElementById('spd_reload').addEventListener('click', reloadSpeeds);
+  // デッキ読込後に呼ばれる
+  window.__reloadSpeeds = reloadSpeeds;
 </script>
 </body>
 </html>

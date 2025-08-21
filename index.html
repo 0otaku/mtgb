@@ -12,8 +12,10 @@
   <style>
     :root{
       --bg:#fff; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb;
-      --brand:#d62828; --c1:#6EE7B7; --c2:#4E9CFF; --c3:#FFC857; --c4:#FF6B6B;
+      --brand:#d62828; --brand-ink:#fff;
+      --c1:#6EE7B7; --c2:#4E9CFF; --c3:#FFC857; --c4:#FF6B6B;
       --radius:14px;
+      --xblue:#1d9bf0; --danger:#ef4444;
     }
     *{box-sizing:border-box} html,body{height:100%}
     body{margin:0;font-family:"Inter","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--fg);background:var(--bg)}
@@ -33,15 +35,23 @@
     .grid{display:grid;gap:16px}
     @media(min-width:1000px){ .grid{grid-template-columns:1.2fr .8fr} }
 
+    /* 埋め込み */
     .embed-wrap{position:relative;background:#fff;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
     iframe{width:100%;height:70vh;min-height:520px;border:0;display:block;background:#fff}
-    .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(0deg, rgba(255,255,255,.94), rgba(255,255,255,.94));text-align:center;padding:18px}
+    .overlay{
+      position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+      background:linear-gradient(0deg, rgba(255,255,255,.94), rgba(255,255,255,.94));
+      text-align:center;padding:18px
+    }
     .overlay .box{max-width:560px}
     .overlay .box h3{margin:0 0 8px;font-size:18px}
     .overlay .box p{margin:6px 0;color:#4b5563;font-size:14px}
     .overlay .box .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
-    .overlay .box a, .overlay .box button{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;cursor:pointer;font-size:14px}
+    .overlay .box a, .overlay .box button{
+      border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;cursor:pointer;font-size:14px
+    }
 
+    /* 投票 */
     .vote-card{display:flex;flex-direction:column;gap:12px}
     .vote-block{padding:12px;border:1px dashed var(--border);border-radius:14px;background:#fafafa}
     .prompt{font-weight:800;letter-spacing:.01em;font-size:16px}
@@ -49,7 +59,11 @@
 
     .vote-row{display:grid; gap:10px; grid-template-columns:1fr 1fr; margin-top:10px}
     @media(min-width:1000px){ .vote-row{grid-template-columns:repeat(4,1fr)} }
-    .chip{width:100%; height:64px; font-size:22px; font-weight:800;border:1px solid var(--border); border-radius:12px; background:#f4f4f5;cursor:pointer; transition:transform .07s ease, background .15s ease, box-shadow .15s ease;}
+    .chip{
+      width:100%; height:64px; font-size:22px; font-weight:800;
+      border:1px solid var(--border); border-radius:12px; background:#f4f4f5;
+      cursor:pointer; transition:transform .07s ease, background .15s ease, box-shadow .15s ease;
+    }
     .chip:hover{background:#e9e9eb}
     .chip:active{transform:scale(.98)}
     .b1{background:color-mix(in srgb, var(--c1) 18%, white)}
@@ -57,12 +71,19 @@
     .b3{background:color-mix(in srgb, var(--c3) 20%, white)}
     .b4{background:color-mix(in srgb, var(--c4) 20%, white)}
     @media(min-width:1000px){ .chip{height:72px; font-size:24px} }
-    .chip.selected{position:relative;outline:2px solid var(--brand);box-shadow:0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent) inset;transform: translateY(-1px);}
+
+    .chip.selected{
+      position:relative;
+      outline:2px solid var(--brand);
+      box-shadow:0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent) inset;
+      transform: translateY(-1px);
+    }
     .chip[disabled]{opacity:.6; pointer-events:none; filter:grayscale(.2)}
 
     .skip-row{margin-top:6px}
     .skip{font-size:12px;color:#6b7280;text-decoration:underline;background:transparent;border:0;cursor:pointer}
 
+    /* 結果 */
     .results{display:none;flex-direction:column;gap:8px}
     .bar{position:relative;height:30px;border-radius:4px;background:#f3f4f6;border:1px solid #e5e7eb;overflow:hidden}
     .seg{position:absolute;top:0;bottom:0}
@@ -72,39 +93,31 @@
     .dot{width:12px;height:12px;border-radius:999px;display:inline-block}
     .hint{font-size:12px;color:var(--muted)}
 
-    .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none}
-    .sheet{position:fixed;right:0;top:0;bottom:0;width:min(520px,100%);background:#fff;box-shadow:-10px 0 30px rgba(0,0,0,.2);display:none;flex-direction:column}
-    .sheet header{padding:16px;border-bottom:1px solid var(--border)}
-    .sheet .body{padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:calc(100vh - 56px)}
-    .tabs{display:flex;gap:8px;flex-wrap:wrap}
-    .tab{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px}
-    .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
-    .note{font-size:12px;color:var(--muted);line-height:1.6}
-    .msg{font-size:14px}
-    .item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:8px}
-    .item a{color:#111;text-decoration:none}
-    .item a:hover{text-decoration:underline}
-    .subtle{opacity:.6; font-size:12px}
-    .subtle:hover{opacity:.8}
+    /* 強調ボタン（次へ） */
+    .primary-btn{
+      background:var(--brand); color:var(--brand-ink); border:1px solid var(--brand);
+      border-radius:999px; padding:10px 16px; font-weight:700;
+    }
+    .primary-btn:hover{ filter:brightness(1.05) }
 
-    .search-card{display:flex;flex-direction:column;gap:12px}
-    .search-row{display:flex;gap:8px;flex-wrap:wrap}
-    input[type="text"]{flex:1 1 420px; min-width:260px;padding:14px 16px; border:1px solid var(--border); border-radius:10px; font-size:15px;}
+    /* 共有/削除 希望の差別化 */
+    .btn-x{
+      display:inline-flex; align-items:center; gap:6px;
+      border:1px solid var(--xblue); color:#0b67a7; background:#fff; border-radius:999px; padding:8px 12px; font-weight:600;
+    }
+    .btn-x:hover{ background:#f0f8ff }
+    .btn-danger-ghost{
+      display:inline-flex; align-items:center;
+      border:1px solid color-mix(in srgb, var(--danger) 50%, #eee);
+      color:var(--danger); background:#fff; border-radius:999px; padding:8px 12px;
+    }
+    .btn-danger-ghost:hover{ background:#fff5f5 }
 
-    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:999px;display:none}
-
-    /* ミニ集計バー & HUD追加 */
-    .mini {display:flex; align-items:center; gap:8px; margin-left:auto}
-    .miniBar{position:relative; width:120px; height:12px; border-radius:999px; background:#f3f4f6; border:1px solid #e5e7eb; overflow:hidden}
-    .miniSeg{position:absolute; top:0; bottom:0}
-    .miniSeg.b1{background:var(--c1)} .miniSeg.b2{background:var(--c2)} .miniSeg.b3{background:var(--c3)} .miniSeg.b4{background:var(--c4)}
-    .miniPct{font-size:11px; color:#6b7280}
-
+    /* 検索カードの下に進捗（モバイル優先）*/
+    .progress-inline{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px}
     .hud{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:8px}
     .hud .progress{position:relative; width:140px; height:8px; border-radius:999px; background:#eee; overflow:hidden; border:1px solid #e5e7eb}
     .hud .progress i{position:absolute; inset:0 auto 0 0; width:0; background:var(--brand)}
-
-    /* Mana pips */
     .mana-pips{display:flex;gap:6px;align-items:center}
     .mana{width:18px;height:18px;border-radius:999px;display:inline-grid;place-items:center;font-size:11px;font-weight:800;color:#fff;position:relative}
     .mana::after{content:""; position:absolute; inset:0; border-radius:999px; background:radial-gradient(70% 70% at 30% 30%, rgba(255,255,255,.35), transparent 60%), radial-gradient(60% 60% at 70% 70%, rgba(0,0,0,.15), transparent 60%); mix-blend-mode:overlay; pointer-events:none;}
@@ -116,6 +129,15 @@
     .mana.C{background:#9CA3AF;color:#111}
     @keyframes pip-pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:scale(1)}}
     .mana.gained{animation:pip-pop .45s ease-out}
+
+    /* ミニ集計（自分の登録） */
+    .mini {display:flex; align-items:center; gap:8px; margin-left:auto}
+    .miniBar{position:relative; width:120px; height:12px; border-radius:999px; background:#f3f4f6; border:1px solid #e5e7eb; overflow:hidden}
+    .miniSeg{position:absolute; top:0; bottom:0}
+    .miniSeg.b1{background:var(--c1)} .miniSeg.b2{background:var(--c2)} .miniSeg.b3{background:var(--c3)} .miniSeg.b4{background:var(--c4)}
+    .miniPct{font-size:11px; color:#6b7280}
+
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:999px;display:none}
   </style>
 </head>
 <body>
@@ -129,11 +151,7 @@
           <span class="hint" id="sourceLink" style="margin-left:6px"></span>
         </div>
       </div>
-      <div style="display:flex; align-items:center; gap:10px;">
-        <div id="hud" class="hud">Lv <b id="lv">0</b> · <span id="xp">0</span>XP <div class="progress"><i id="xpbar"></i></div></div>
-        <div class="mana-pips" id="pips"></div>
-        <button id="openSheet" class="small-btn">登録 / 削除</button>
-      </div>
+      <button id="openSheet" class="small-btn">登録 / 削除</button>
     </header>
 
     <div class="grid">
@@ -177,21 +195,28 @@
             <div class="seg b3" id="seg3" style="left:0;width:0%"></div>
             <div class="seg b4" id="seg4" style="left:0;width:0%"></div>
           </div>
-            <div class="legend">
-              <span><i class="dot" style="background:var(--c1)"></i> 1 <b id="p1">0%</b></span>
-              <span><i class="dot" style="background:var(--c2)"></i> 2 <b id="p2">0%</b></span>
-              <span><i class="dot" style="background:var(--c3)"></i> 3 <b id="p3">0%</b></span>
-              <span><i class="dot" style="background:var(--c4)"></i> 4 <b id="p4">0%</b></span>
-            </div>
-          <div style="display:flex;gap:8px;margin-top:2px">
-            <button id="nextBtn" class="small-btn">次のデッキへ</button>
+          <div class="legend">
+            <span><i class="dot" style="background:var(--c1)"></i> 1 <b id="p1">0%</b></span>
+            <span><i class="dot" style="background:var(--c2)"></i> 2 <b id="p2">0%</b></span>
+            <span><i class="dot" style="background:var(--c3)"></i> 3 <b id="p3">0%</b></span>
+            <span><i class="dot" style="background:var(--c4)"></i> 4 <b id="p4">0%</b></span>
+          </div>
+
+          <!-- （③）デッキ別の平均/中央値（既定非表示。下のフラグでONに） -->
+          <div class="hint" id="deckRtStat" style="display:none"></div>
+
+          <div style="display:flex;gap:8px;margin-top:2px;align-items:center">
+            <button id="nextBtn" class="primary-btn">▶ 次のデッキへ</button>
             <span class="hint" id="autoNextHint"></span>
           </div>
         </div>
 
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button id="shareBtn" class="small-btn">このデッキをシェア</button>
-          <button id="reportBtn" class="small-btn subtle">このデッキに削除希望を出す</button>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button id="shareBtn" class="btn-x" title="Xでシェア">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2H21l-6.5 7.43L22.5 22H15.9l-5.05-6.13L4.95 22H2l7.02-8.02L1.5 2h6.75l4.57 5.55L18.244 2Zm-2.4 18h1.86L8.22 4H6.28l9.564 16Z" fill="currentColor"/></svg>
+            このデッキをシェア
+          </button>
+          <button id="reportBtn" class="btn-danger-ghost">削除希望</button>
         </div>
       </div>
     </div>
@@ -203,18 +228,24 @@
         <button id="searchBtn" class="small-btn" style="background:#fff">検索</button>
       </div>
       <div class="note">対象URL形式: <b>https://www.hareruyamtg.com/decks/＜数字＞</b>（数字だけでも可）</div>
+
+      <!-- （①）進捗は検索カードの下に移動 -->
+      <div class="progress-inline">
+        <div id="hud" class="hud">Lv <b id="lv">0</b> · <span id="xp">0</span>XP <div class="progress"><i id="xpbar"></i></div></div>
+        <div class="mana-pips" id="pips"></div>
+      </div>
     </div>
 
     <footer class="card" style="margin-top:16px">
       <div class="note">
         ※ 本サイトは外部サイトのページを埋め込み表示します。掲載URLはユーザー投稿であり、
         内容の正確性・合法性を保証しません。著作権等の権利は各権利者に帰属します。
-        不適切・権利侵害の疑いがあるURLは「このデッキに削除希望を出す」からご連絡ください。
-        必要に応じて削除対応します。
+        不適切・権利侵害の疑いがあるURLは「削除希望」からご連絡ください。必要に応じて削除対応します。
       </div>
     </footer>
   </div>
 
+  <!-- 右シート -->
   <div class="sheet-backdrop" id="backdrop"></div>
   <aside class="sheet" id="sheet">
     <header>
@@ -261,6 +292,7 @@
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+    /* ===== 設定 ===== */
     const SUPABASE_URL  = "https://onzljxnqlrohkzsfxqbh.supabase.co";
     const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemxqeG5xbHJvaGt6c2Z4cWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NzUzNTksImV4cCI6MjA3MTE1MTM1OX0.eLAP_-PtVm6tBFFCNfOVsTqEcvtZK3x3QFFNeRpxuj8";
     const FN_INGEST     = `${SUPABASE_URL}/functions/v1/ingest-hareruya`;
@@ -268,7 +300,11 @@
     const FN_DELETE_OWN = `${SUPABASE_URL}/functions/v1/delete-own-deck`;
     const FN_VOTE       = `${SUPABASE_URL}/functions/v1/vote`;
     const APP_URL       = `${location.origin}${location.pathname}`;
-    const RPC_RANDOM    = "random_deck_for_session_v2"; // 旧に戻す時は 'random_deck_for_session'
+    const RPC_RANDOM    = "random_deck_for_session_v2";
+
+    // （③）デッキ別平均/中央値表示を出したい場合だけ true にしてください（既定 false）
+    const SHOW_DECK_STATS = false;
+    const DECK_STATS_DAYS = 14;
 
     const REPORT_NEXT_DELAY_MS = 1500;
 
@@ -292,13 +328,13 @@
     }
     function canonUrl(input){ const id = toDeckId(input); return id ? `https://www.hareruyamtg.com/decks/${id}` : null; }
 
-    // ===== 埋め込み =====
+    /* ===== 埋め込み ===== */
     const frame = document.getElementById("deckFrame");
     const fail  = document.getElementById("embedFail");
     const openHareruyaLink = document.getElementById("openHareruyaLink");
     const retryEmbed = document.getElementById("retryEmbed");
-
     let embedWatch = null;
+
     function setEmbed(inputUrl){
       const s = String(inputUrl || "").trim();
       const m = s.match(/decks\/(\d+)/) || s.match(/deck\.hareruyamtg\.com\/(\d+)/) || s.match(/^(\d{4,})$/);
@@ -315,10 +351,11 @@
     frame.addEventListener("load", ()=> { clearTimeout(embedWatch); });
     retryEmbed.addEventListener("click", ()=> { if (currentDeck?.source_url) setEmbed(currentDeck.source_url); });
 
+    /* ===== 状態 ===== */
     let currentDeck = null;
     let autoNextTimer = null;
 
-    // ========= 集計 =========
+    /* ===== 集計バー ===== */
     const resultsEl = $("#results");
     const seg1=$("#seg1"), seg2=$("#seg2"), seg3=$("#seg3"), seg4=$("#seg4");
     const p1=$("#p1"), p2=$("#p2"), p3=$("#p3"), p4=$("#p4");
@@ -359,27 +396,59 @@
     }
     async function loadMyVote(){
       if(!currentDeck) { markMyVote(null); return null; }
-      const { data } = await sb.from("labels").select("bracket").eq("deck_id", currentDeck.id).eq("session_id", sid).maybeSingle();
-      const b = data?.bracket ?? null; markMyVote(b); return b;
+      const { data } = await sb.from("labels")
+        .select("bracket")
+        .eq("deck_id", currentDeck.id)
+        .eq("session_id", sid)
+        .maybeSingle();
+      const b = data?.bracket ?? null;
+      markMyVote(b);
+      return b;
     }
 
+    // （③）デッキ別 平均/中央値の表示（フラグで有効化）
+    async function loadDeckRtStat(){
+      const box = document.getElementById('deckRtStat');
+      if (!SHOW_DECK_STATS) { box.style.display='none'; return; }
+      if (!currentDeck) { box.style.display='none'; return; }
+      try{
+        const { data, error } = await sb.rpc('vote_time_stats_deck', { p_deck: currentDeck.id, p_days: DECK_STATS_DAYS });
+        if (error){ box.style.display='none'; return; }
+        const a = (data?.avg_sec ?? 0).toFixed(2);
+        const m = (data?.median_sec ?? 0).toFixed(2);
+        const c = (data?.cnt ?? 0);
+        if (c>0){
+          box.textContent = `⏱ 過去${DECK_STATS_DAYS}日: 平均 ${a}s / 中央 ${m}s（${c}件）`;
+          box.style.display='block';
+        }else{
+          box.style.display='none';
+        }
+      }catch { box.style.display='none'; }
+    }
+
+    /* ===== 表示 ===== */
     async function showDeckByRow(row,{showResults=false}={}){
       currentDeck = row;
       markMyVote(null);
       setEmbed(row.source_url);
+
       const id = toDeckId(row.source_url);
       if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
+
       document.querySelector('[data-deck-title]').textContent = row.deck_name || (id ? `Hareruya Deck #${id}` : "Hareruya Deck");
       document.querySelector('[data-deck-date]').style.display='none';
       $("#sourceLink").innerHTML = `<a href="${row.source_url}" target="_blank" rel="noopener noreferrer">元ページを開く↗</a>`;
+
       resultsEl.style.display = showResults ? "flex":"none";
       await loadVotesAndRenderResults(showResults);
       await loadMyVote();
+      await loadDeckRtStat();
+
       clearInterval(autoNextTimer); autoNextTimer=null; autoNextHint.textContent="";
       window._deckShownAt = performance.now(); // 投票反応時間の起点
     }
 
-    // ========= ランダム取得（v2） =========
+    /* ===== ランダム（v2） ===== */
     async function loadRandomDeck(){
       try{
         const { data, error } = await sb.rpc(RPC_RANDOM, { p_session: sid });
@@ -393,7 +462,7 @@
       }catch{ toast("読み込みに失敗しました。時間をおいて再読み込みしてください。"); }
     }
 
-    // ========= 投票 =========
+    /* ===== 投票 ===== */
     let voting = false;
     function setVoting(b){ voting=b; voteChips.forEach(btn => btn.disabled = b); }
 
@@ -418,7 +487,7 @@
       return false;
     }
 
-    // ===== Gamification: MV（投票数）＋色付け =====
+    /* ===== Gamification: MV（投票数）＋色付け（R≤15 / G≥45 / W昼 / B夜 / Uぞろ目 / C拮抗） ===== */
     const VOTE_CNT_KEY='mtgb_vote_cnt_v1';
     function voteCount(){ return Number(localStorage.getItem(VOTE_CNT_KEY)||0); }
     function incVoteCnt(){ const c=voteCount()+1; localStorage.setItem(VOTE_CNT_KEY,String(c)); return c; }
@@ -502,6 +571,7 @@
       const prevMV = mvFromVotes(prevVotes);
       const newMV  = mvFromVotes(newVotes);
       if (newMV <= prevMV) return;
+
       const { avg, dayDominant, nightDominant, balanced } = statsFromLogs();
       let color = 'C';
       // 優先順：U（ぞろ目）→ R（≤15s）→ G（≥45s）→ W（昼）/B（夜）→ C（拮抗）
@@ -515,7 +585,7 @@
       const m = getMana();
       if (!m[color]) {
         m[color] = 1; setMana(m);
-        const p=$("#pips"); const last=p?.lastElementChild;
+        const p=document.getElementById('pips'); const last=p?.lastElementChild;
         last?.classList.add('gained'); setTimeout(()=>last?.classList.remove('gained'), 600);
         toast(`💠 マナ獲得: ${color}（MV${newMV}）`);
       }
@@ -524,13 +594,26 @@
     document.querySelectorAll(".chip[data-vote]").forEach(el => el.addEventListener("click", async (e)=>{
       if (!currentDeck || voting) return;
       const bracket = Number(e.currentTarget.dataset.vote);
+
       setVoting(true);
       try{
         const done = await postVoteWithRetry(bracket);
-        if (!done){ toast("保存エラーが発生しました。少し時間をおいてお試しください。"); return; }
+        if (!done){
+          toast("保存エラーが発生しました。少し時間をおいてお試しください。");
+          return;
+        }
 
         // 反応秒＆時間帯ログ
         const lastDt = recordReactionAndTime();
+
+        // 全体集計用：非同期でサーバ記録（失敗しても無視）
+        try {
+          await sb.rpc('add_vote_time', {
+            p_session: sid,
+            p_deck: currentDeck.id,
+            p_ms: Math.round(lastDt * 1000)
+          });
+        } catch(_) {}
 
         // 投票数更新 → レベルアップなら色判定
         const prevVotes = voteCount();
@@ -541,6 +624,7 @@
         markMyVote(bracket);
         resultsEl.style.display="flex";
         await loadVotesAndRenderResults(true);
+        await loadDeckRtStat();
 
         let left = 10;
         autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
@@ -557,20 +641,20 @@
       }
     }));
 
-      // スキップ：記録（RPC）→次へ
-      async function onSkip(){
-        try{
-          if (currentDeck) {
-            await sb.rpc('upsert_skip', { p_session: sid, p_deck: currentDeck.id });
-          }
-        }catch(_){}
-        clearInterval(autoNextTimer); autoNextTimer=null;
-        await loadRandomDeck();
-      }
-      $("#skipBtn").addEventListener("click", onSkip);
-      nextBtn.addEventListener("click", ()=> { clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); });
+    // ===== スキップ（RPC：upsert_skip で記録）→ 次へ =====
+    async function onSkip(){
+      try{
+        if (currentDeck) {
+          await sb.rpc('upsert_skip', { p_session: sid, p_deck: currentDeck.id });
+        }
+      }catch(_){}
+      clearInterval(autoNextTimer); autoNextTimer=null;
+      await loadRandomDeck();
+    }
+    $("#skipBtn").addEventListener("click", onSkip);
+    nextBtn.addEventListener("click", ()=> { clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); });
 
-    // ========= 検索・登録 =========
+    // ===== 検索・登録 =====
     async function ensureDeckExists(url){
       const { data } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
       if(data?.id) return data;
@@ -590,7 +674,7 @@
     $("#searchBtn").addEventListener("click", doSearch);
     $("#searchInput").addEventListener("keydown", e=>{ if(e.key==="Enter") doSearch(); });
 
-    // ========= 共有 =========
+    // ===== 共有 =====
     function currentDeckLink(){
       const id = currentDeck ? toDeckId(currentDeck.source_url) : null;
       return id ? `${APP_URL}?deck=${id}` : APP_URL;
@@ -605,7 +689,7 @@
     }
     document.getElementById("shareBtn").addEventListener("click", shareCurrentDeck);
 
-    // ========= 通報（成功→少し待って次へ） =========
+    // ===== 通報（成功→少し待って次へ） =====
     let reporting = false;
     $("#reportBtn").addEventListener("click", async ()=>{
       if(!currentDeck || reporting) return;
@@ -627,7 +711,7 @@
       }catch{ toast("報告に失敗しました。"); reporting=false; }
     });
 
-    // ========= シート開閉 =========
+    // ===== シート開閉 =====
     const sheet=$("#sheet"), backdrop=$("#backdrop");
     function openSheet(){ sheet.style.display="flex"; backdrop.style.display="block"; }
     function closeSheet(){ sheet.style.display="none"; backdrop.style.display="none"; }
@@ -635,7 +719,7 @@
     $("#closeSheet").addEventListener("click", closeSheet);
     backdrop.addEventListener("click", closeSheet);
 
-    // ========= タブ =========
+    // ===== タブ =====
     const tabs = document.querySelectorAll(".tab");
     tabs.forEach(t=> t.addEventListener("click", ()=>{
       tabs.forEach(x=>x.classList.remove("active")); t.classList.add("active");
@@ -646,7 +730,7 @@
       if(name==="mine") loadMine();
     }));
 
-    // ========= 登録（Edge） =========
+    // ===== 登録 =====
     $("#regBtn").addEventListener("click", async ()=>{
       const msg=$("#regMsg"); msg.textContent="";
       const v=$("#regUrl").value.trim(); const url=canonUrl(v); if(!url){ msg.textContent="URL形式が正しくありません。"; return; }
@@ -664,7 +748,7 @@
       }catch{ msg.textContent="登録に失敗しました。時間をおいて再度お試しください。"; }
     });
 
-    // ========= 自分の登録（ミニ集計バー） =========
+    // ===== 自分の登録（ミニ集計バー） =====
     $("#reloadMine").addEventListener("click", ()=> loadMine());
     async function loadMiniChart(deckId, container){
       const { data, error } = await sb.from("labels").select("bracket").eq("deck_id", deckId).limit(5000);
@@ -722,7 +806,7 @@
       }catch{ toast("削除に失敗しました。"); }
     }
 
-    // 起動時
+    // ===== 起動時 =====
     const paramDeck = new URLSearchParams(location.search).get("deck");
     if (paramDeck) {
       const url = canonUrl(paramDeck);
