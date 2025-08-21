@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <style>
   body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;padding:16px;background:#fff;color:#0f172a}
+  h1{margin:0 0 12px;font-size:18px}
   h2{margin:18px 0 8px}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   input,button,select{padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px}
@@ -18,461 +19,370 @@
   .warn{background:#f59e0b;color:#111827;border-color:#f59e0b}
   .ok{background:#16a34a;color:#fff;border-color:#16a34a}
   .link{color:#2563eb;text-decoration:none}
-  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
   .section{margin-top:16px}
-  /* ▼ ページ内スクロール（固定高） */
-  .scrollbox{max-height:60vh;overflow:auto;padding-right:4px}
-  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  #dlist{ max-height:420px; overflow:auto }
-  @media(max-width:900px){ .two-col{grid-template-columns:1fr} }
+  details>summary{cursor:pointer;user-select:none}
+  .close-btn{margin-left:auto}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f3f4f6;border:1px solid #e5e7eb}
 </style>
-
 <body>
   <div class="row">
-    <b>管理</b>
-    <label>Admin Token: <input id="token" placeholder="保存されます" style="min-width:260px"></label>
+    <h1>管理</h1>
+    <label>Admin Token: <input id="token" placeholder="保存されます" style="min-width:320px"></label>
   </div>
 
-  <!-- ▼ 設定（通報しきい値） -->
-  <div class="section">
-    <h2>設定</h2>
+  <!-- ====== 設定 ====== -->
+  <details class="section" open>
+    <summary><h2>設定</h2></summary>
     <div class="row">
       <label>通報しきい値 <input id="th" type="number" value="5" style="width:90px"></label>
-      <button id="loadSet">読み込み</button>
-      <button id="saveSet" class="ok">保存</button>
+      <button id="btnLoadSet">読み込み</button>
+      <button id="btnSaveSet" class="ok">保存</button>
+      <button class="close-btn" onclick="this.closest('details').open=false">閉じる</button>
     </div>
-    <div class="muted">※ この件数以上の通報で該当デッキを自動削除します</div>
-  </div>
-  <!-- ▲ 設定 -->
+    <div class="muted">※ この件数以上の通報で該当デッキを自動削除します（admin2+SQLが必要）</div>
+  </details>
 
-  <!-- ▼ アナリティクス（Edge Function不要・フロントで集計） -->
-  <div class="section">
-    <h2>アナリティクス</h2>
-
-    <div class="card">
-      <div class="row">
-        <b>全体 反応時間</b>
-        <label>過去 <input id="rt_days" type="number" value="7" style="width:90px"></label> 日
-        <button id="rt_load">読み込み</button>
-      </div>
-      <div id="rt_out" class="muted" style="margin-top:6px">—</div>
-    </div>
-
-    <div class="two-col">
-      <div class="card">
-        <div class="row">
-          <b>デッキ別反応</b>
-          <label>過去 <input id="rt_d_days" type="number" value="7" style="width:90px"></label> 日</label>
-          <label>件数 <input id="rt_d_limit" type="number" value="50" style="width:90px"></label>
-          <label>並び <select id="rt_d_sort">
-            <option value="avg_desc">平均(遅い順)</option>
-            <option value="avg_asc">平均(速い順)</option>
-            <option value="med_desc">中央値(遅い順)</option>
-            <option value="med_asc">中央値(速い順)</option>
-            <option value="cnt_desc">件数(多い順)</option>
-            <option value="cnt_asc">件数(少ない順)</option>
-          </select></label>
-          <button id="rt_d_load">読み込み</button>
-        </div>
-        <div id="rt_d_list" class="scrollbox" style="margin-top:6px"></div>
-      </div>
-
-      <div class="card">
-        <div class="row">
-          <b>アクセス（日別）</b>
-          <label>過去 <input id="traf_days" type="number" value="7" style="width:90px"></label> 日</label>
-          <button id="traf_load">読み込み</button>
-        </div>
-        <div id="traf_out" class="scrollbox" style="margin-top:6px"></div>
-        <div class="muted" style="margin-top:6px">※ impressions テーブルが無い場合は空になります</div>
-      </div>
-    </div>
-  </div>
-  <!-- ▲ アナリティクス -->
-
-  <!-- ▼ デッキ一覧（ページ内スクロール） -->
-  <div class="section">
-    <h2>デッキ一覧</h2>
+  <!-- ====== 通報一覧 ====== -->
+  <details class="section" open>
+    <summary><h2>通報一覧</h2></summary>
     <div class="row">
-      <label>検索 <input id="dq" placeholder="URL/名前"></label>
-      <label>件数 <input id="dlimit" type="number" value="50" style="width:90px"></label>
-      <label>From <input id="dfrom" type="date"></label>
-      <label>To <input id="dto" type="date"></label>
-      <label>Offset <input id="doffset" type="number" value="0" style="width:90px"></label>
-      <button id="dload">読み込み</button>
-    </div>
-    <div id="dlist" class="grid scrollbox"></div>
-  </div>
-  <!-- ▲ デッキ一覧 -->
-
-  <!-- ▼ 通報一覧 -->
-  <div class="section">
-    <h2>通報一覧</h2>
-    <div class="row">
-      <label>検索 <input id="q" placeholder="URL/名前"></label>
+      <label>検索 <input id="q" placeholder="URL/名前/ID"></label>
       <label>最小通報数 <input id="min" type="number" value="1" style="width:90px"></label>
       <label>件数 <input id="limit" type="number" value="50" style="width:90px"></label>
       <label>From <input id="from" type="date"></label>
       <label>To <input id="to" type="date"></label>
-      <button id="load">読み込み</button>
+      <button id="btnLoadReports">読み込み</button>
+      <button class="close-btn" onclick="this.closest('details').open=false">閉じる</button>
     </div>
-    <div id="list" class="grid scrollbox"></div>
-  </div>
+    <div id="reportList" class="grid"></div>
+  </details>
 
-  <!-- ▼ 上位者 -->
-  <div class="section">
-    <h2>通報者（上位）</h2>
+  <!-- ====== アナリティクス ====== -->
+  <details class="section" open>
+    <summary><h2>アナリティクス</h2></summary>
+
+    <div class="card">
+      <div class="row">
+        <label>過去 <input id="days_rt" type="number" value="7" style="width:90px"></label> 日
+        <button id="btnLoadRT">反応速度 読み込み</button>
+        <button class="close-btn" onclick="this.closest('.card').style.display='none'">閉じる</button>
+      </div>
+      <div id="rtBox" class="grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <label>過去 <input id="days_imp" type="number" value="7" style="width:90px"></label> 日
+        <label><select id="grain">
+          <option value="hour">時間</option><option value="day">日</option>
+        </select></label>
+        <button id="btnLoadImp">アクセス数 読み込み</button>
+        <button class="close-btn" onclick="this.closest('.card').style.display='none'">閉じる</button>
+      </div>
+      <div id="impBox" class="grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <label>過去 <input id="days_vbd" type="number" value="7" style="width:90px"></label> 日
+        <label>件数 <input id="vbd_limit" type="number" value="100" style="width:90px"></label>
+        <button id="btnLoadVBD">デッキ別投票数 読み込み</button>
+        <button class="close-btn" onclick="this.closest('.card').style.display='none'">閉じる</button>
+      </div>
+      <div id="vbdBox" class="grid"></div>
+    </div>
+  </details>
+
+  <!-- ====== ブロック一覧 ====== -->
+  <details class="section" open>
+    <summary><h2>ブロック一覧</h2></summary>
+    <div class="row"><button id="btnLoadBL">読み込み</button><button class="close-btn" onclick="this.closest('details').open=false">閉じる</button></div>
+    <div class="grid" id="blocklist"></div>
+  </details>
+
+  <!-- ====== 通報者 / 登録者 ====== -->
+  <details class="section" open>
+    <summary><h2>通報者（上位）</h2></summary>
     <div class="row">
-      <label>過去 <input id="days" type="number" value="7" style="width:90px"></label> 日間
+      <label>過去 <input id="days_rep" type="number" value="7" style="width:90px"></label> 日間
       <label>件数 <input id="limit_rep" type="number" value="100" style="width:90px"></label>
-      <button id="loadRep">読み込み</button>
+      <button id="btnLoadRep">読み込み</button>
+      <button class="close-btn" onclick="this.closest('details').open=false">閉じる</button>
     </div>
-    <div id="reporters" class="grid scrollbox"></div>
-  </div>
+    <div id="reporters" class="grid"></div>
+  </details>
 
-  <div class="section">
-    <h2>登録者（上位）</h2>
+  <details class="section" open>
+    <summary><h2>登録者（上位）</h2></summary>
     <div class="row">
       <label>過去 <input id="days_reg" type="number" value="7" style="width:90px"></label> 日間
       <label>件数 <input id="limit_reg" type="number" value="100" style="width:90px"></label>
-      <button id="loadReg">読み込み</button>
+      <button id="btnLoadReg">読み込み</button>
+      <button class="close-btn" onclick="this.closest('details').open=false">閉じる</button>
     </div>
-    <div id="registrants" class="grid scrollbox"></div>
-  </div>
+    <div id="registrants" class="grid"></div>
+  </details>
 
-  <div class="section">
-    <h2>ブロック一覧</h2>
-    <div class="row"><button id="loadBL">更新</button></div>
-    <div class="grid scrollbox" id="blocklist"></div>
-  </div>
-
-<!-- ========= Supabase クライアント（moduleでwindowへ） ========= -->
-<script type="module">
-  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-  const SUPABASE_URL  = "https://onzljxnqlrohkzsfxqbh.supabase.co";
-  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemxqeG5xbHJvaGt6c2Z4cWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NzUzNTksImV4cCI6MjA3MTE1MTM1OX0.eLAP_-PtVm6tBFFCNfOVsTqEcvtZK3x3QFFNeRpxuj8";
-  window.sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
-    auth: { persistSession:false, autoRefreshToken:false },
-    global: { headers: { apikey: SUPABASE_ANON } },
-  });
-</script>
+  <!-- ====== 復旧一覧 ====== -->
+  <details class="section" open>
+    <summary><h2>復旧一覧（自動/手動削除ログ）</h2></summary>
+    <div class="row">
+      <label>過去 <input id="days_del" type="number" value="30" style="width:90px"></label> 日間
+      <label>件数 <input id="limit_del" type="number" value="100" style="width:90px"></label>
+      <button id="btnLoadDel">読み込み</button>
+      <button class="close-btn" onclick="this.closest('details').open=false">閉じる</button>
+    </div>
+    <div id="deletedList" class="grid"></div>
+  </details>
 
 <script>
-/* ==== 既存の admin2 API ==== */
-const FN = "https://onzljxnqlrohkzsfxqbh.supabase.co/functions/v1/admin2";
-const $ = (id)=>document.getElementById(id);
-$("token").value = localStorage.getItem("admin_token") || "";
-$("token").addEventListener('change',()=>localStorage.setItem("admin_token",$("token").value));
+/* ====== 接続設定 ====== */
+const ADMIN2_URL = "https://onzljxnqlrohkzsfxqbh.supabase.co/functions/v1/admin2"; // ←自環境の admin2 URL に
+const $id = (id)=>document.getElementById(id);
+$id("token").value = localStorage.getItem("admin_token") || "";
+$id("token").addEventListener("input",()=>localStorage.setItem("admin_token",$id("token").value));
 
-/* ==== ボタン紐付け ==== */
-$("loadSet").onclick = loadSettings;
-$("saveSet").onclick = saveSettings;
-$("dload").onclick = loadDecks;
-$("load").onclick = loadReports;
-$("loadRep").onclick = loadReporters;
-$("loadReg").onclick = loadRegistrants;
-$("loadBL").onclick = loadBlocklist;
-
-/* ==== アナリティクス紐付け（フロント集計） ==== */
-$("rt_load").onclick = calcGlobalRT;
-$("rt_d_load").onclick = calcDeckRT;
-$("traf_load").onclick = calcTraffic;
-
-/* ==== 共通 API ヘルパ ==== */
-async function api(pathOrQuery, opts={}){
-  const token=$("token").value.trim(); if(!token){ alert("Admin Tokenを入力してください"); throw new Error('no token'); }
-  const url = pathOrQuery.startsWith("http") ? pathOrQuery : `${FN}${pathOrQuery}`;
-  const r = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), "x-admin-token": token } });
-  if(!r.ok){
-    const t = await r.text().catch(()=> "");
-    throw new Error(t || `HTTP ${r.status}`);
-  }
-  return r.json();
+/* ====== 汎用API ====== */
+async function callAdmin2(query, opt={}){
+  const token = $id("token").value.trim();
+  if(!token){ alert("Admin Token を入力してください"); throw new Error("no token"); }
+  const url = (query.startsWith("http")?query:`${ADMIN2_URL}${query}`);
+  const init = {
+    method: opt.method||"GET",
+    headers: { "x-admin-token": token, "content-type":"application/json" }
+  };
+  if(opt.body) init.body = JSON.stringify(opt.body);
+  const res = await fetch(url, init);
+  const txt = await res.text();
+  let json;
+  try{ json = JSON.parse(txt); }catch{ json = { ok:false, error:txt } }
+  if(!res.ok || json?.ok===false) throw new Error(json?.error||res.statusText);
+  return json;
 }
-async function apiPost(payload){ return api("", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }); }
+function fmtDate(s){ try{ return new Date(s).toLocaleString(); }catch{ return s; } }
+function clearBox(node){ node.innerHTML=""; }
 
-/* ==== 設定（取得・保存） ==== */
+/* ====== 設定 ====== */
 async function loadSettings(){
   try{
-    const j = await api("?view=settings", { method:"GET" });
-    $("th").value = j?.data?.report_delete_threshold?.value ?? 5;
-  }catch(e){ alert("設定の読み込みに失敗: " + (e?.message||e)); }
+    const j = await callAdmin2(`?view=settings`);
+    $id("th").value = j.data?.report_delete_threshold?.value ?? 5;
+  }catch(e){ alert("設定取得エラー: "+e.message); }
 }
 async function saveSettings(){
-  const v = Number($("th").value || "5");
-  if (!Number.isFinite(v) || v<1) return alert("1以上の数値を入力してください");
   try{
-    await api("", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ action:"set_settings", report_delete_threshold: v }) });
+    const n = Number($id("th").value);
+    await callAdmin2("",{ method:"POST", body:{ action:"set_settings", report_delete_threshold:n }});
     alert("保存しました");
-  }catch(e){ alert("保存に失敗: " + (e?.message||e)); }
+  }catch(e){ alert("保存エラー: "+e.message); }
 }
+$id("btnLoadSet").onclick = loadSettings;
+$id("btnSaveSet").onclick = saveSettings;
 
-/* ==== デッキ一覧（ページ内スクロール対応） ==== */
-async function loadDecks(){
-  const q = $("dq").value.trim();
-  const limit = $("dlimit").value || "50";
-  const from = $("dfrom").value;
-  const to   = $("dto").value;
-  const offset = $("doffset").value || "0";
-  const query = `?view=decks&limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}${from?`&from=${from}`:''}${to?`&to=${to}`:''}${q?`&q=${encodeURIComponent(q)}`:''}`;
-
-  try{
-    const j = await api(query, { method:"GET" });
-    const L = $("dlist");
-    const fmt = (d)=> d ? new Date(d).toLocaleString() : "—";
-    L.innerHTML = (j.data||[]).map(x=>`
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-          <div>
-            <div><b>${x.deck_name || '(名称なし)'}</b></div>
-            <div class="muted">登録: ${fmt(x.created_at)} / 公開日: ${x.registered_at||'—'} / 通報: ${x.report_count||0}件</div>
-            <div class="muted">votes: [1:${x.votes?.b1||0}] [2:${x.votes?.b2||0}] [3:${x.votes?.b3||0}] [4:${x.votes?.b4||0}]</div>
-            <div><a class="link mono" href="${x.source_url}" target="_blank" rel="noopener">${x.source_url}</a></div>
-            <div class="muted">IP: <span class="mono">${x.created_by_ip||'-'}</span> / SID: <span class="mono">${x.created_by_session||'-'}</span></div>
-          </div>
-          <div class="btns">
-            <button class="danger" onclick="delDeck('${x.id}')" title="ラベル/通報も削除">削除</button>
-          </div>
-        </div>
-      </div>
-    `).join('') || '<div class="muted">該当なし</div>';
-  }catch(e){
-    alert("読み込みに失敗しました: " + (e?.message||e));
-  }
-}
-
-/* ==== 通報一覧 ==== */
+/* ====== 通報一覧 ====== */
 async function loadReports(){
-  const q = $("q").value.trim();
-  const min = $("min").value || "1";
-  const limit = $("limit").value || "50";
-  const from = $("from").value;
-  const to   = $("to").value;
-  const query = `?view=reports&min=${encodeURIComponent(min)}&limit=${encodeURIComponent(limit)}${from?`&from=${from}`:''}${to?`&to=${to}`:''}${q?`&q=${encodeURIComponent(q)}`:''}`;
-  const j = await api(query, { method: "GET" });
-  const list = $("list");
-  const fmt = (d)=>new Date(d).toLocaleString();
-  list.innerHTML = (j.data||[]).map(x=>`
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-        <div>
-          <div><b>${x.deck_name || '(名称なし)'}</b></div>
-          <div class="muted">通報: ${x.report_count}件 / 最終: ${fmt(x.latest_reported_at)} / 登録日: ${x.registered_at||'—'}</div>
-          <div><a class="link mono" href="${x.deck_source_url}" target="_blank" rel="noopener">${x.deck_source_url}</a></div>
-        </div>
-        <div class="btns">
-          <button class="warn" onclick="clearReports('${x.deck_id}')">通報クリア</button>
-          <button class="danger" onclick="delDeck('${x.deck_id}')" title="ラベルも含め削除されます">削除</button>
-        </div>
-      </div>
-    </div>
-  `).join('') || '<div class="muted">該当なし</div>';
+  const box = $id("reportList");
+  clearBox(box);
+  try{
+    const q = $id("q").value.trim();
+    const min = Number($id("min").value||1);
+    const limit = Number($id("limit").value||50);
+    const from = $id("from").value || "";
+    const to   = $id("to").value   || "";
+    const qs = new URLSearchParams({ view:"reports", min, limit });
+    if(q) qs.set("q", q);
+    if(from) qs.set("from", from);
+    if(to) qs.set("to", to);
+    const j = await callAdmin2(`?${qs.toString()}`);
+    const data = j.data||[];
+    if(!data.length){ box.innerHTML = `<div class="muted">0件</div>`; return; }
+    for(const r of data){
+      const div = document.createElement("div"); div.className="card";
+      const a = document.createElement("a"); a.href=r.deck_source_url; a.target="_blank"; a.className="link"; a.textContent = r.deck_name || r.deck_source_url;
+      const idpill = `<span class="pill mono">ID ${r.deck_id}</span>`;
+      const row1 = document.createElement("div"); row1.className="row";
+      row1.append(a); row1.insertAdjacentHTML("beforeend", idpill);
+      const row2 = document.createElement("div"); row2.className="row muted";
+      row2.textContent = `通報 ${r.report_count} / 最終 ${fmtDate(r.latest_reported_at)}`;
+      const btns = document.createElement("div"); btns.className="btns";
+      const btnDel = document.createElement("button"); btnDel.className="danger"; btnDel.textContent="削除";
+      btnDel.onclick = async ()=>{
+        if(!confirm("このデッキを削除しますか？")) return;
+        try{ await callAdmin2("",{method:"POST", body:{action:"delete_deck", deck_id:r.deck_id}}); div.remove(); }
+        catch(e){ alert("削除失敗: "+e.message); }
+      };
+      const btnClr = document.createElement("button"); btnClr.className="warn"; btnClr.textContent="通報クリア";
+      btnClr.onclick = async ()=>{
+        try{ await callAdmin2("",{method:"POST", body:{action:"clear_reports", deck_id:r.deck_id}}); alert("クリアしました"); }
+        catch(e){ alert("失敗: "+e.message); }
+      };
+      btns.append(btnDel, btnClr);
+      div.append(row1,row2,btns);
+      box.append(div);
+    }
+  }catch(e){ box.innerHTML = `<div class="muted">未対応またはエラー：${e.message}</div>`; }
 }
+$id("btnLoadReports").onclick = loadReports;
 
-/* ==== 削除・通報クリア ==== */
-async function delDeck(id){
-  if(!confirm("このデッキを削除しますか？（投票・通報も消えます）")) return;
-  await apiPost({ action:"delete_deck", deck_id:id });
-  loadDecks(); loadReports();
+/* ====== アナリティクス ====== */
+async function loadRT(){
+  const box=$id("rtBox"); clearBox(box);
+  try{
+    const days = Number($id("days_rt").value||7);
+    const j = await callAdmin2(`?view=rt_global&days=${days}`);
+    const res=j.data||[];
+    if(!res.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    for(const r of res){
+      const el=document.createElement("div"); el.className="card";
+      el.innerHTML = `<div class="row"><b>${r.label}</b><span class="muted">avg ${r.avg_rt.toFixed?.(1) ?? r.avg_rt}s / n=${r.n}</span></div>`;
+      box.append(el);
+    }
+  }catch(e){ box.innerHTML=`<div class="muted">未対応またはエラー：${e.message}</div>`; }
 }
-async function clearReports(id){
-  if(!confirm("このデッキの通報を全て削除しますか？")) return;
-  await apiPost({ action:"clear_reports", deck_id:id });
-  loadReports();
+$id("btnLoadRT").onclick = loadRT;
+
+async function loadImpressions(){
+  const box=$id("impBox"); clearBox(box);
+  try{
+    const days = Number($id("days_imp").value||7);
+    const grain = $id("grain").value;
+    const j = await callAdmin2(`?view=impressions&days=${days}&grain=${grain}`);
+    const res = j.data||[];
+    if(!res.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    for(const r of res){
+      const el=document.createElement("div"); el.className="card";
+      el.innerHTML = `<div class="row"><b>${r.bucket}</b><span class="muted">${r.count} 件</span></div>`;
+      box.append(el);
+    }
+  }catch(e){ box.innerHTML=`<div class="muted">未対応またはエラー：${e.message}</div>`; }
 }
+$id("btnLoadImp").onclick = loadImpressions;
 
-/* ==== 通報者（上位） ==== */
-async function loadReporters(){
-  const limit = $("limit_rep").value || "100";
-  const days = $("days").value || "7";
-  const j = await api(`?view=reporters&limit=${encodeURIComponent(limit)}&days=${encodeURIComponent(days)}`, { method:"GET" });
-  const L = $("reporters");
-  const fmt = (d)=>new Date(d).toLocaleString();
-  L.innerHTML = (j.data||[]).map(r=>`
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-        <div>
-          <div>IP: <span class="mono">${r.ip || '-'}</span> / Session: <span class="mono">${r.session_id || '-'}</span></div>
-          <div class="muted">通報: ${r.count}件 / 最終: ${fmt(r.last)}</div>
-        </div>
-        <div class="btns">
-          ${r.ip ? (r.blocked_ip
-            ? `<button class="ok" onclick="unblockIp('${r.ip}')">IP解除</button>`
-            : `<button class="danger" onclick="blockIp('${r.ip}')">IPブロック</button>`) : ''}
-          ${r.session_id ? (r.blocked_session
-            ? `<button class="ok" onclick="unblockSession('${r.session_id}')">セッション解除</button>`
-            : `<button class="danger" onclick="blockSession('${r.session_id}')">セッションブロック</button>`) : ''}
-        </div>
-      </div>
-    </div>
-  `).join('') || '<div class="muted">該当なし</div>';
+async function loadVBD(){
+  const box=$id("vbdBox"); clearBox(box);
+  try{
+    const days = Number($id("days_vbd").value||7);
+    const limit= Number($id("vbd_limit").value||100);
+    const j = await callAdmin2(`?view=votes_deck&days=${days}&limit=${limit}`);
+    const res = j.data||[];
+    if(!res.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    for(const r of res){
+      const el=document.createElement("div"); el.className="card";
+      const name = r.deck_name || r.source_url || r.deck_id;
+      el.innerHTML = `<div class="row"><a class="link" target="_blank" href="${r.source_url}">${name}</a><span class="pill mono">ID ${r.deck_id}</span><span class="muted">votes ${r.votes}</span></div>`;
+      box.append(el);
+    }
+  }catch(e){ box.innerHTML=`<div class="muted">未対応またはエラー：${e.message}</div>`; }
 }
+$id("btnLoadVBD").onclick = loadVBD;
 
-/* ==== 登録者（上位） ==== */
-async function loadRegistrants(){
-  const limit = $("limit_reg").value || "100";
-  const days = $("days_reg").value || "7";
-  const j = await api(`?view=registrants&limit=${encodeURIComponent(limit)}&days=${encodeURIComponent(days)}`, { method:"GET" });
-  const L = $("registrants");
-  const fmt = (d)=>new Date(d).toLocaleString();
-  L.innerHTML = (j.data||[]).map(r=>`
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-        <div>
-          <div>IP: <span class="mono">${r.ip || '-'}</span> / Session: <span class="mono">${r.session_id || '-'}</span></div>
-          <div class="muted">登録: ${r.count}件 / 最終: ${fmt(r.last)}</div>
-        </div>
-        <div class="btns">
-          ${r.ip ? (r.blocked_ip
-            ? `<button class="ok" onclick="unblockIp('${r.ip}')">IP解除</button>`
-            : `<button class="danger" onclick="blockIp('${r.ip}')">IPブロック</button>`) : ''}
-          ${r.session_id ? (r.blocked_session
-            ? `<button class="ok" onclick="unblockSession('${r.session_id}')">セッション解除</button>`
-            : `<button class="danger" onclick="blockSession('${r.session_id}')">セッションブロック</button>`) : ''}
-        </div>
-      </div>
-    </div>
-  `).join('') || '<div class="muted">該当なし</div>';
-}
-
-/* ==== ブロック操作＆一覧 ==== */
-async function blockIp(ip){ await apiPost({ action:"block_ip", ip }); loadReporters(); loadRegistrants(); loadBlocklist(); }
-async function unblockIp(ip){ await apiPost({ action:"unblock_ip", ip }); loadReporters(); loadRegistrants(); loadBlocklist(); }
-async function blockSession(session_id){ await apiPost({ action:"block_session", session_id }); loadReporters(); loadRegistrants(); loadBlocklist(); }
-async function unblockSession(session_id){ await apiPost({ action:"unblock_session", session_id }); loadReporters(); loadRegistrants(); loadBlocklist(); }
-
+/* ====== ブロック ====== */
 async function loadBlocklist(){
-  const j = await api(`?view=blocklist`, { method:"GET" });
-  const B = $("blocklist");
-  B.innerHTML = `
-    <div class="card">
-      <div><b>IP</b></div>
-      ${(j.ips||[]).map(x=>`
-        <div class="row" style="justify-content:space-between">
-          <span class="mono">${x.ip}</span>
-          <div class="btns"><button class="ok" onclick="unblockIp('${x.ip}')">解除</button></div>
-        </div>
-      `).join('') || '<div class="muted">なし</div>'}
-    </div>
-    <div class="card">
-      <div><b>セッション</b></div>
-      ${(j.sessions||[]).map(x=>`
-        <div class="row" style="justify-content:space-between">
-          <span class="mono">${x.session_id}</span>
-          <div class="btns"><button class="ok" onclick="unblockSession('${x.session_id}')">解除</button></div>
-        </div>
-      `).join('') || '<div class="muted">なし</div>'}
-    </div>
-  `;
+  const box=$id("blocklist"); clearBox(box);
+  try{
+    const j = await callAdmin2(`?view=blocklist`);
+    const ips = j.ips||[], sids=j.sessions||[];
+    const ipCard=document.createElement("div"); ipCard.className="card";
+    ipCard.innerHTML="<h3>IP</h3>";
+    const ipList=document.createElement("div"); ipList.className="grid";
+    for(const r of ips){
+      const row=document.createElement("div"); row.className="row";
+      row.innerHTML=`<span class="mono">${r.ip}</span>`;
+      const un=document.createElement("button"); un.textContent="解除"; un.onclick=()=> postUnblockIp(r.ip,row);
+      row.append(un); ipList.append(row);
+    }
+    const addRow=document.createElement("div"); addRow.className="row";
+    const ipIn=document.createElement("input"); ipIn.placeholder="IP";
+    const add=document.createElement("button"); add.textContent="IPブロック"; add.onclick=()=> postBlockIp(ipIn.value, ipList);
+    addRow.append(ipIn,add); ipCard.append(ipList,addRow);
+
+    const sidCard=document.createElement("div"); sidCard.className="card";
+    sidCard.innerHTML="<h3>Session</h3>";
+    const sidList=document.createElement("div"); sidList.className="grid";
+    for(const r of sids){
+      const row=document.createElement("div"); row.className="row";
+      row.innerHTML=`<span class="mono">${r.session_id}</span>`;
+      const un=document.createElement("button"); un.textContent="解除"; un.onclick=()=> postUnblockSession(r.session_id,row);
+      row.append(un); sidList.append(row);
+    }
+    const addRow2=document.createElement("div"); addRow2.className="row";
+    const sidIn=document.createElement("input"); sidIn.placeholder="Session";
+    const add2=document.createElement("button"); add2.textContent="Sessionブロック"; add2.onclick=()=> postBlockSession(sidIn.value, sidList);
+    addRow2.append(sidIn,add2); sidCard.append(sidList,addRow2);
+
+    box.append(ipCard,sidCard);
+  }catch(e){ box.innerHTML=`<div class="muted">エラー：${e.message}</div>`; }
 }
+async function postBlockIp(ip, list){ if(!ip) return; try{ await callAdmin2("",{method:"POST",body:{action:"block_ip",ip}}); loadBlocklist(); }catch(e){ alert(e.message); } }
+async function postUnblockIp(ip, row){ try{ await callAdmin2("",{method:"POST",body:{action:"unblock_ip",ip}}); row.remove(); }catch(e){ alert(e.message); } }
+async function postBlockSession(session_id){ if(!session_id) return; try{ await callAdmin2("",{method:"POST",body:{action:"block_session",session_id}}); loadBlocklist(); }catch(e){ alert(e.message); } }
+async function postUnblockSession(session_id, row){ try{ await callAdmin2("",{method:"POST",body:{action:"unblock_session",session_id}}); row.remove(); }catch(e){ alert(e.message); } }
+$id("btnLoadBL").onclick = loadBlocklist;
 
-/* ====== アナリティクス実装（Supabase直読） ====== */
-
-function median(arr){
-  if(!arr.length) return 0;
-  const a = [...arr].sort((x,y)=>x-y);
-  const m = Math.floor(a.length/2);
-  return a.length%2 ? a[m] : (a[m-1]+a[m])/2;
+/* ====== ユーザー上位 ====== */
+async function loadReporters(){
+  const box=$id("reporters"); clearBox(box);
+  try{
+    const days=Number($id("days_rep").value||7), limit=Number($id("limit_rep").value||100);
+    const j=await callAdmin2(`?view=reporters&days=${days}&limit=${limit}`);
+    const data=j.data||[];
+    if(!data.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    for(const r of data){
+      const el=document.createElement("div"); el.className="card";
+      el.innerHTML=`<div class="row"><span class="mono">${r.ip||"(no ip)"} / ${r.session_id||"(no session)"}</span><span class="muted">件数 ${r.count} / 最終 ${fmtDate(r.last)}</span></div>`;
+      const btns=document.createElement("div"); btns.className="btns";
+      if(r.ip){ const b=document.createElement("button"); b.textContent=r.blocked_ip?"IP解除":"IPブロック"; b.onclick=()=> (r.blocked_ip?postUnblockIp(r.ip,el):postBlockIp(r.ip,box)); btns.append(b); }
+      if(r.session_id){ const b2=document.createElement("button"); b2.textContent=r.blocked_session?"Session解除":"Sessionブロック"; b2.onclick=()=> (r.blocked_session?postUnblockSession(r.session_id,el):postBlockSession(r.session_id)); btns.append(b2); }
+      el.append(btns); box.append(el);
+    }
+  }catch(e){ box.innerHTML=`<div class="muted">エラー：${e.message}</div>`; }
 }
+$id("btnLoadRep").onclick = loadReporters;
 
-async function calcGlobalRT(){
-  const days = Number($("rt_days").value || "7");
-  const since = new Date(Date.now() - days*24*60*60*1000).toISOString();
-  const { data, error } = await window.sb
-    .from("labels")
-    .select("rt_sec,created_at", { count:"exact" })
-    .gte("created_at", since)
-    .not("rt_sec","is", null)
-    .limit(10000);
-  if(error){ $("rt_out").textContent = "読み込みエラー: " + error.message; return; }
-  const secs = (data||[]).map(r=>Number(r.rt_sec)||0).filter(n=>Number.isFinite(n)&&n>=0);
-  const avg = secs.length ? (secs.reduce((a,b)=>a+b,0)/secs.length) : 0;
-  const med = median(secs);
-  $("rt_out").textContent = `平均 ${avg.toFixed(2)}s / 中央 ${med.toFixed(2)}s（件数: ${secs.length}、過去${days}日）`;
+async function loadRegistrants(){
+  const box=$id("registrants"); clearBox(box);
+  try{
+    const days=Number($id("days_reg").value||7), limit=Number($id("limit_reg").value||100);
+    const j=await callAdmin2(`?view=registrants&days=${days}&limit=${limit}`);
+    const data=j.data||[];
+    if(!data.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    for(const r of data){
+      const el=document.createElement("div"); el.className="card";
+      el.innerHTML=`<div class="row"><span class="mono">${r.ip||"(no ip)"} / ${r.session_id||"(no session)"}</span><span class="muted">件数 ${r.count} / 最終 ${fmtDate(r.last)}</span></div>`;
+      const btns=document.createElement("div"); btns.className="btns";
+      if(r.ip){ const b=document.createElement("button"); b.textContent=r.blocked_ip?"IP解除":"IPブロック"; b.onclick=()=> (r.blocked_ip?postUnblockIp(r.ip,el):postBlockIp(r.ip,box)); btns.append(b); }
+      if(r.session_id){ const b2=document.createElement("button"); b2.textContent=r.blocked_session?"Session解除":"Sessionブロック"; b2.onclick=()=> (r.blocked_session?postUnblockSession(r.session_id,el):postBlockSession(r.session_id)); btns.append(b2); }
+      el.append(btns); box.append(el);
+    }
+  }catch(e){ box.innerHTML=`<div class="muted">エラー：${e.message}</div>`; }
 }
+$id("btnLoadReg").onclick = loadRegistrants;
 
-async function calcDeckRT(){
-  const days = Number($("rt_d_days").value || "7");
-  const limit = Number($("rt_d_limit").value || "50");
-  const sort = $("rt_d_sort").value;
-  const since = new Date(Date.now() - days*24*60*60*1000).toISOString();
-  const { data, error } = await window.sb
-    .from("labels")
-    .select("rt_sec,created_at,deck_id")
-    .gte("created_at", since)
-    .not("rt_sec","is", null)
-    .limit(10000);
-  if(error){ $("rt_d_list").innerHTML = `<div class="muted">読み込みエラー: ${error.message}</div>`; return; }
-  const byDeck = new Map();
-  for(const r of (data||[])){
-    const d = String(r.deck_id);
-    const s = Number(r.rt_sec)||0;
-    if(!Number.isFinite(s)||s<0) continue;
-    const arr = byDeck.get(d) || []; arr.push(s); byDeck.set(d, arr);
-  }
-  const rows = [];
-  for(const [deck_id, arr] of byDeck){
-    const avg = arr.reduce((a,b)=>a+b,0)/arr.length;
-    const med = median(arr);
-    rows.push({ deck_id, avg, med, cnt: arr.length });
-  }
-  const cmp = {
-    avg_desc:(a,b)=>b.avg-a.avg, avg_asc:(a,b)=>a.avg-b.avg,
-    med_desc:(a,b)=>b.med-a.med, med_asc:(a,b)=>a.med-b.med,
-    cnt_desc:(a,b)=>b.cnt-a.cnt, cnt_asc:(a,b)=>a.cnt-b.cnt
-  }[sort] || ((a,b)=>b.cnt-a.cnt);
-  rows.sort(cmp);
-  const top = rows.slice(0, limit);
-
-  // deckのURL/名前を取得（必要数だけ）
-  const ids = top.map(r=>r.deck_id);
-  let decks = new Map();
-  if(ids.length){
-    const { data: dd } = await window.sb.from("decks").select("id,source_url,deck_name").in("id", ids);
-    for(const d of (dd||[])) decks.set(String(d.id), d);
-  }
-
-  $("rt_d_list").innerHTML = top.map(r=>{
-    const d = decks.get(r.deck_id);
-    const url = d?.source_url || "";
-    return `
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-          <div>
-            <div><b>${d?.deck_name || '(名称なし)'}</b></div>
-            <div class="muted">平均 ${r.avg.toFixed(2)}s / 中央 ${r.med.toFixed(2)}s / 件数 ${r.cnt}</div>
-            ${url ? `<div><a class="link mono" href="${url}" target="_blank" rel="noopener">${url}</a></div>` : ''}
-          </div>
-        </div>
-      </div>`;
-  }).join('') || '<div class="muted">該当なし</div>';
+/* ====== 復旧 ====== */
+async function loadDeleted(){
+  const box=$id("deletedList"); clearBox(box);
+  try{
+    const days=Number($id("days_del").value||30), limit=Number($id("limit_del").value||100);
+    const j=await callAdmin2(`?view=deleted_list&days=${days}&limit=${limit}`);
+    const data=j.data||[];
+    if(!data.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    for(const r of data){
+      const el=document.createElement("div"); el.className="card";
+      const a=document.createElement("a"); a.href=r.source_url; a.target="_blank"; a.className="link"; a.textContent=r.deck_name||r.source_url||r.deck_id||"(deleted)";
+      const row1=document.createElement("div"); row1.className="row";
+      row1.append(a); row1.insertAdjacentHTML("beforeend", `<span class="pill mono">deck ${r.deck_id||"-"}</span>`);
+      const row2=document.createElement("div"); row2.className="row muted";
+      row2.textContent=`削除: ${fmtDate(r.deleted_at)} / 理由: ${r.reason||"-"} / by ${r.deleted_by||"-"}`;
+      const btn=document.createElement("button"); btn.textContent="復旧"; btn.className="ok";
+      btn.onclick=async()=>{ try{ await callAdmin2("",{method:"POST",body:{action:"restore_deck", log_id:r.id}}); el.remove(); }catch(e){ alert("復旧失敗: "+e.message); } };
+      el.append(row1,row2,btn); box.append(el);
+    }
+  }catch(e){ box.innerHTML=`<div class="muted">エラー：${e.message}</div>`; }
 }
+$id("btnLoadDel").onclick = loadDeleted;
 
-async function calcTraffic(){
-  const days = Number($("traf_days").value || "7");
-  const since = new Date(Date.now() - days*24*60*60*1000).toISOString();
-  // impressions が無い場合に備えて try
-  const { data, error } = await window.sb
-    .from("impressions")
-    .select("created_at")
-    .gte("created_at", since)
-    .limit(20000);
-  if(error){ $("traf_out").innerHTML = `<div class="muted">impressions未作成かRLSで不可: ${error.message}</div>`; return; }
-  const byDay = new Map();
-  for(const r of (data||[])){
-    const d = new Date(r.created_at);
-    const k = d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-    byDay.set(k, (byDay.get(k)||0)+1);
-  }
-  const rows = [...byDay.entries()].sort((a,b)=>a[0]<b[0]?1:-1);
-  $("traf_out").innerHTML = rows.map(([day,cnt])=>`
-    <div class="row" style="justify-content:space-between">
-      <div>${day}</div><div class="mono">${cnt}</div>
-    </div>
-  `).join('') || '<div class="muted">該当なし</div>';
-}
-
-/* 初期：設定だけ自動読込（不要なら削除OK） */
+/* 初期：設定だけ読み込む */
 loadSettings();
 </script>
 </body>
