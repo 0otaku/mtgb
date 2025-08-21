@@ -113,7 +113,15 @@
     }
     .btn-danger-ghost:hover{ background:#fff5f5 }
 
-    /* 検索カードの下に進捗（モバイル優先）*/
+    /* 検索セクションの控えめ化＋入力幅を広く */
+    .search-card .prompt{font-weight:600;font-size:14px;color:var(--muted)}
+    .search-row{display:flex;gap:8px;flex-wrap:wrap}
+    input[type="text"]{
+      flex:1 1 100%; min-width:0;
+      padding:14px 16px; border:1px solid var(--border); border-radius:10px; font-size:15px;
+    }
+
+    /* 進捗（モバイル優先）*/
     .progress-inline{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px}
     .hud{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:8px}
     .hud .progress{position:relative; width:140px; height:8px; border-radius:999px; background:#eee; overflow:hidden; border:1px solid #e5e7eb}
@@ -130,12 +138,26 @@
     @keyframes pip-pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.12);opacity:1}100%{transform:scale(1)}}
     .mana.gained{animation:pip-pop .45s ease-out}
 
-    /* ミニ集計（自分の登録） */
+    /* 自分の登録（ミニ集計） */
     .mini {display:flex; align-items:center; gap:8px; margin-left:auto}
     .miniBar{position:relative; width:120px; height:12px; border-radius:999px; background:#f3f4f6; border:1px solid #e5e7eb; overflow:hidden}
     .miniSeg{position:absolute; top:0; bottom:0}
     .miniSeg.b1{background:var(--c1)} .miniSeg.b2{background:var(--c2)} .miniSeg.b3{background:var(--c3)} .miniSeg.b4{background:var(--c4)}
     .miniPct{font-size:11px; color:#6b7280}
+
+    /* シート（登録/削除） ← 復活＆初期非表示 */
+    .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none}
+    .sheet{position:fixed;right:0;top:0;bottom:0;width:min(520px,100%);background:#fff;box-shadow:-10px 0 30px rgba(0,0,0,.2);display:none;flex-direction:column}
+    .sheet header{padding:16px;border-bottom:1px solid var(--border)}
+    .sheet .body{padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:calc(100vh - 56px)}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px}
+    .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
+    .note{font-size:12px;color:var(--muted);line-height:1.6}
+    .msg{font-size:14px}
+    .item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:8px}
+    .item a{color:#111;text-decoration:none}
+    .item a:hover{text-decoration:underline}
 
     .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:999px;display:none}
   </style>
@@ -202,7 +224,6 @@
             <span><i class="dot" style="background:var(--c4)"></i> 4 <b id="p4">0%</b></span>
           </div>
 
-          <!-- （③）デッキ別の平均/中央値（既定非表示。下のフラグでONに） -->
           <div class="hint" id="deckRtStat" style="display:none"></div>
 
           <div style="display:flex;gap:8px;margin-top:2px;align-items:center">
@@ -229,7 +250,6 @@
       </div>
       <div class="note">対象URL形式: <b>https://www.hareruyamtg.com/decks/＜数字＞</b>（数字だけでも可）</div>
 
-      <!-- （①）進捗は検索カードの下に移動 -->
       <div class="progress-inline">
         <div id="hud" class="hud">Lv <b id="lv">0</b> · <span id="xp">0</span>XP <div class="progress"><i id="xpbar"></i></div></div>
         <div class="mana-pips" id="pips"></div>
@@ -301,11 +321,8 @@
     const FN_VOTE       = `${SUPABASE_URL}/functions/v1/vote`;
     const APP_URL       = `${location.origin}${location.pathname}`;
     const RPC_RANDOM    = "random_deck_for_session_v2";
-
-    // （③）デッキ別平均/中央値表示を出したい場合だけ true にしてください（既定 false）
     const SHOW_DECK_STATS = false;
     const DECK_STATS_DAYS = 14;
-
     const REPORT_NEXT_DELAY_MS = 1500;
 
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
@@ -406,7 +423,7 @@
       return b;
     }
 
-    // （③）デッキ別 平均/中央値の表示（フラグで有効化）
+    // デッキ別平均/中央値（配列返却に対応）
     async function loadDeckRtStat(){
       const box = document.getElementById('deckRtStat');
       if (!SHOW_DECK_STATS) { box.style.display='none'; return; }
@@ -414,9 +431,10 @@
       try{
         const { data, error } = await sb.rpc('vote_time_stats_deck', { p_deck: currentDeck.id, p_days: DECK_STATS_DAYS });
         if (error){ box.style.display='none'; return; }
-        const a = (data?.avg_sec ?? 0).toFixed(2);
-        const m = (data?.median_sec ?? 0).toFixed(2);
-        const c = (data?.cnt ?? 0);
+        const row = Array.isArray(data) ? (data[0] || {}) : (data || {});
+        const a = Number(row.avg_sec ?? 0).toFixed(2);
+        const m = Number(row.median_sec ?? 0).toFixed(2);
+        const c = Number(row.cnt ?? 0);
         if (c>0){
           box.textContent = `⏱ 過去${DECK_STATS_DAYS}日: 平均 ${a}s / 中央 ${m}s（${c}件）`;
           box.style.display='block';
@@ -487,11 +505,10 @@
       return false;
     }
 
-    /* ===== Gamification: MV（投票数）＋色付け（R≤15 / G≥45 / W昼 / B夜 / Uぞろ目 / C拮抗） ===== */
+    /* ===== Gamification ===== */
     const VOTE_CNT_KEY='mtgb_vote_cnt_v1';
     function voteCount(){ return Number(localStorage.getItem(VOTE_CNT_KEY)||0); }
     function incVoteCnt(){ const c=voteCount()+1; localStorage.setItem(VOTE_CNT_KEY,String(c)); return c; }
-
     const MV_BY_VOTES = [0, 5, 10, 20, 50, 100]; // MV0..5
     function mvFromVotes(n){
       let mv=0; for(let i=0;i<MV_BY_VOTES.length;i++) if(n>=MV_BY_VOTES[i]) mv=i;
@@ -505,7 +522,7 @@
       const ratio = nextNeed>0 ? Math.max(0, Math.min(1, cur/nextNeed)) : 1;
       const lvEl=$("#lv"), xpEl=$("#xp"), bar=$("#xpbar");
       if(lvEl) lvEl.textContent = mv;
-      if(xpEl) xpEl.textContent = n;   // 表示名は"XP"のまま→数字は投票数
+      if(xpEl) xpEl.textContent = n;
       if(bar)  bar.style.width = (ratio*100)+'%';
     }
     renderHUD();
@@ -516,15 +533,15 @@
       const season = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
       const cur = localStorage.getItem(SEASON_KEY);
       if (cur !== season){
-        localStorage.removeItem('mtgb_mana_v1');   // 色
-        localStorage.removeItem('mtgb_rt_log_v1'); // 反応時間ログ
-        localStorage.removeItem('mtgb_dn_log_v1'); // 昼夜ログ
+        localStorage.removeItem('mtgb_mana_v1');
+        localStorage.removeItem('mtgb_rt_log_v1');
+        localStorage.removeItem('mtgb_dn_log_v1');
         localStorage.setItem(SEASON_KEY, season);
       }
     }
     ensureSeason();
 
-    const MANA_KEY='mtgb_mana_v1'; // {W,U,B,R,G,C}=0/1
+    const MANA_KEY='mtgb_mana_v1';
     function getMana(){ try{return JSON.parse(localStorage.getItem(MANA_KEY)||'{"W":0,"U":0,"B":0,"R":0,"G":0,"C":0}')}catch{return {W:0,U:0,B:0,R:0,G:0,C:0}} }
     function setMana(m){ localStorage.setItem(MANA_KEY, JSON.stringify(m)); renderPips(); }
     function renderPips(){
@@ -541,8 +558,8 @@
       localStorage.setItem(key, JSON.stringify(arr)); return arr;
     }
     function recordReactionAndTime(){
-      const dt = Math.max(0, (performance.now() - (window._deckShownAt || performance.now()))) / 1000; // 秒
-      pushLimited('mtgb_rt_log_v1', Math.round(dt*10)/10, 20); // 直近20件
+      const dt = Math.max(0, (performance.now() - (window._deckShownAt || performance.now()))) / 1000;
+      pushLimited('mtgb_rt_log_v1', Math.round(dt*10)/10, 20);
       pushLimited('mtgb_dn_log_v1', {h:nowHour()}, 60);
       return dt;
     }
@@ -574,7 +591,6 @@
 
       const { avg, dayDominant, nightDominant, balanced } = statsFromLogs();
       let color = 'C';
-      // 優先順：U（ぞろ目）→ R（≤15s）→ G（≥45s）→ W（昼）/B（夜）→ C（拮抗）
       if (isZorome(lastDt))      color = 'U';
       else if (avg <= 15)        color = 'R';
       else if (avg >= 45)        color = 'G';
@@ -603,10 +619,8 @@
           return;
         }
 
-        // 反応秒＆時間帯ログ
         const lastDt = recordReactionAndTime();
 
-        // 全体集計用：非同期でサーバ記録（失敗しても無視）
         try {
           await sb.rpc('add_vote_time', {
             p_session: sid,
@@ -615,7 +629,6 @@
           });
         } catch(_) {}
 
-        // 投票数更新 → レベルアップなら色判定
         const prevVotes = voteCount();
         const newVotes = incVoteCnt();
         tryAssignManaOnLevelUpVotes(prevVotes, newVotes, lastDt);
@@ -641,7 +654,7 @@
       }
     }));
 
-    // ===== スキップ（RPC：upsert_skip で記録）→ 次へ =====
+    // スキップ（RPC：upsert_skip で記録）→ 次へ
     async function onSkip(){
       try{
         if (currentDeck) {
@@ -654,7 +667,7 @@
     $("#skipBtn").addEventListener("click", onSkip);
     nextBtn.addEventListener("click", ()=> { clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); });
 
-    // ===== 検索・登録 =====
+    // 検索・登録
     async function ensureDeckExists(url){
       const { data } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
       if(data?.id) return data;
@@ -674,7 +687,7 @@
     $("#searchBtn").addEventListener("click", doSearch);
     $("#searchInput").addEventListener("keydown", e=>{ if(e.key==="Enter") doSearch(); });
 
-    // ===== 共有 =====
+    // 共有
     function currentDeckLink(){
       const id = currentDeck ? toDeckId(currentDeck.source_url) : null;
       return id ? `${APP_URL}?deck=${id}` : APP_URL;
@@ -689,7 +702,7 @@
     }
     document.getElementById("shareBtn").addEventListener("click", shareCurrentDeck);
 
-    // ===== 通報（成功→少し待って次へ） =====
+    // 通報（成功→少し待って次へ）
     let reporting = false;
     $("#reportBtn").addEventListener("click", async ()=>{
       if(!currentDeck || reporting) return;
@@ -711,7 +724,7 @@
       }catch{ toast("報告に失敗しました。"); reporting=false; }
     });
 
-    // ===== シート開閉 =====
+    // シート開閉
     const sheet=$("#sheet"), backdrop=$("#backdrop");
     function openSheet(){ sheet.style.display="flex"; backdrop.style.display="block"; }
     function closeSheet(){ sheet.style.display="none"; backdrop.style.display="none"; }
@@ -719,7 +732,7 @@
     $("#closeSheet").addEventListener("click", closeSheet);
     backdrop.addEventListener("click", closeSheet);
 
-    // ===== タブ =====
+    // タブ
     const tabs = document.querySelectorAll(".tab");
     tabs.forEach(t=> t.addEventListener("click", ()=>{
       tabs.forEach(x=>x.classList.remove("active")); t.classList.add("active");
@@ -730,7 +743,7 @@
       if(name==="mine") loadMine();
     }));
 
-    // ===== 登録 =====
+    // 登録
     $("#regBtn").addEventListener("click", async ()=>{
       const msg=$("#regMsg"); msg.textContent="";
       const v=$("#regUrl").value.trim(); const url=canonUrl(v); if(!url){ msg.textContent="URL形式が正しくありません。"; return; }
@@ -748,7 +761,7 @@
       }catch{ msg.textContent="登録に失敗しました。時間をおいて再度お試しください。"; }
     });
 
-    // ===== 自分の登録（ミニ集計バー） =====
+    // 自分の登録（ミニ集計）
     $("#reloadMine").addEventListener("click", ()=> loadMine());
     async function loadMiniChart(deckId, container){
       const { data, error } = await sb.from("labels").select("bracket").eq("deck_id", deckId).limit(5000);
@@ -806,7 +819,7 @@
       }catch{ toast("削除に失敗しました。"); }
     }
 
-    // ===== 起動時 =====
+    // 起動時
     const paramDeck = new URLSearchParams(location.search).get("deck");
     if (paramDeck) {
       const url = canonUrl(paramDeck);

@@ -334,9 +334,10 @@ loadSettings();
     const out = document.getElementById('stats_out');
     const { data, error } = await sb.rpc('vote_time_stats', { p_days: days });
     if (error) { out.textContent = '取得エラー'; return; }
-    const a = (data?.avg_sec ?? 0).toFixed(2);
-    const m = (data?.median_sec ?? 0).toFixed(2);
-    const c = (data?.cnt ?? 0);
+    const row = Array.isArray(data) ? (data[0] || {}) : (data || {});
+    const a = Number(row.avg_sec ?? 0).toFixed(2);
+    const m = Number(row.median_sec ?? 0).toFixed(2);
+    const c = Number(row.cnt ?? 0);
     out.textContent = `平均 ${a}s / 中央 ${m}s（件数: ${c}、過去${days}日）`;
   }
   document.getElementById('btn_stats').addEventListener('click', loadStats);
@@ -350,9 +351,10 @@ loadSettings();
       try{
         const { data, error } = await sb.rpc('vote_time_stats_deck', { p_deck: id, p_days: days });
         if (error) { el.textContent = '速度: 取得エラー'; continue; }
-        const a = (data?.avg_sec ?? 0).toFixed(2);
-        const m = (data?.median_sec ?? 0).toFixed(2);
-        const c = (data?.cnt ?? 0);
+        const row = Array.isArray(data) ? (data[0] || {}) : (data || {});
+        const a = Number(row.avg_sec ?? 0).toFixed(2);
+        const m = Number(row.median_sec ?? 0).toFixed(2);
+        const c = Number(row.cnt ?? 0);
         el.textContent = `速度: 平均 ${a}s / 中央 ${m}s（${c}件・過去${days}日）`;
       }catch{ el.textContent = '速度: 取得エラー'; }
     }
