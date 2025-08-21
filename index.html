@@ -1,759 +1,801 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>みんなでブラケット診断</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>みんなでブラケット診断</title>
 
-  <!-- perf -->
-  <link rel="preconnect" href="https://esm.sh" crossorigin>
-  <link rel="preconnect" href="https://www.hareruyamtg.com" crossorigin>
-  <link rel="dns-prefetch" href="//www.hareruyamtg.com">
+<link rel="preconnect" href="https://esm.sh" crossorigin>
+<link rel="preconnect" href="https://www.hareruyamtg.com" crossorigin>
+<link rel="dns-prefetch" href="//www.hareruyamtg.com">
 
-  <style>
-    :root{
-      --bg:#fff; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb;
-      --brand:#d62828;
-      --c1:#6EE7B7; --c2:#4E9CFF; --c3:#FFC857; --c4:#FF6B6B;
-      --radius:14px;
-      --xblue:#1d9bf0; --danger:#ef4444; --link:#2563eb;
-    }
-    *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;font-family:"Inter","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--fg);background:var(--bg)}
-    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+<style>
+:root{
+  --bg:#fff; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb;
+  --brand:#d62828; --c1:#6EE7B7; --c2:#4E9CFF; --c3:#FFC857; --c4:#FF6B6B;
+  --radius:14px; --primary:#ef4444; --primary-weak:#fde8e8;
+}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;font-family:"Inter","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--fg);background:var(--bg)}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
 
-    header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0 12px}
-    .title{display:flex;flex-direction:column;gap:4px;min-width:0}
-    .site{font-weight:800;letter-spacing:.01em;font-size:20px;text-decoration:none;color:inherit}
-    @media(min-width:1000px){ .site{font-size:24px} }
-    .deck-meta{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;color:var(--muted);font-size:13px;min-width:0}
-    .deck-meta a[data-deck-title]{color:var(--link);text-decoration:underline;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:min(80vw,600px)}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0 12px}
+.title{display:flex;flex-direction:column;gap:4px;min-width:0}
+.site{font-weight:800;letter-spacing:.01em;font-size:20px}
+@media(min-width:1000px){ .site{font-size:24px} }
+.deck-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+.deck-link{color:#2563eb;text-decoration:underline;text-underline-offset:2px}
 
-    .small-btn{font-size:13px;border:1px solid var(--border);background:#fff;color:#374151;border-radius:999px;padding:6px 12px;cursor:pointer}
-    .small-btn:hover{background:#fafafa}
+.small-btn{font-size:13px;border:1px solid var(--border);background:#fff;color:#374151;border-radius:999px;padding:6px 12px;cursor:pointer}
+.small-btn:hover{background:#fafafa}
+.small-btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.small-btn.primary.ghost{background:var(--primary-weak);color:#b91c1c;border-color:#fecaca}
 
-    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.grid{display:grid;gap:16px}
+@media(min-width:1000px){ .grid{grid-template-columns:1.2fr .8fr} }
 
-    .grid{display:grid;gap:16px}
-    @media(min-width:1000px){ .grid{grid-template-columns:1.2fr .8fr} }
+/* 埋め込み */
+.embed-wrap{position:relative;background:#fff;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+iframe{width:100%;height:70vh;min-height:520px;border:0;display:block;background:#fff}
+.overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(0deg, rgba(255,255,255,.94), rgba(255,255,255,.94));text-align:center;padding:18px}
+.overlay .box{max-width:560px}
+.overlay .box h3{margin:0 0 8px;font-size:18px}
+.overlay .box p{margin:6px 0;color:#4b5563;font-size:14px}
+.overlay .box .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+.overlay .box a, .overlay .box button{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;cursor:pointer;font-size:14px}
 
-    /* 埋め込み */
-    .embed-wrap{position:relative;background:#fff;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
-    iframe{width:100%;height:70vh;min-height:520px;border:0;display:block;background:#fff}
-    .overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(0deg, rgba(255,255,255,.94), rgba(255,255,255,.94));text-align:center;padding:18px}
-    .overlay .box{max-width:560px}
-    .overlay .box h3{margin:0 0 8px;font-size:18px}
-    .overlay .box p{margin:6px 0;color:#4b5563;font-size:14px}
-    .overlay .box .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
-    .overlay .box a, .overlay .box button{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;cursor:pointer;font-size:14px}
+/* 投票パネル */
+.vote-card{display:flex;flex-direction:column;gap:12px}
+.vote-block{padding:12px;border:1px dashed var(--border);border-radius:14px;background:#fafafa}
+.prompt{font-weight:800;letter-spacing:.01em;font-size:16px}
+@media(min-width:1000px){ .prompt{font-size:20px} }
 
-    /* 投票 */
-    .vote-card{display:flex;flex-direction:column;gap:12px}
-    .vote-block{padding:12px;border:1px dashed var(--border);border-radius:14px;background:#fafafa}
-    .prompt{font-weight:800;letter-spacing:.01em;font-size:16px}
-    @media(min-width:1000px){ .prompt{font-size:20px} }
+/* ボタン：スマホ2列 / 大画面4列 */
+.vote-row{display:grid; gap:10px; grid-template-columns:1fr 1fr; margin-top:10px}
+@media(min-width:1000px){ .vote-row{grid-template-columns:repeat(4,1fr)} }
+.chip{
+  width:100%; height:64px; font-size:22px; font-weight:800;
+  border:1px solid var(--border); border-radius:12px; background:#f4f4f5;
+  cursor:pointer; transition:transform .07s ease, background .15s ease, box-shadow .15s ease;
+}
+.chip:hover{background:#e9e9eb}
+.chip:active{transform:scale(.98)}
+.b1{background:color-mix(in srgb, var(--c1) 18%, white)}
+.b2{background:color-mix(in srgb, var(--c2) 16%, white)}
+.b3{background:color-mix(in srgb, var(--c3) 20%, white)}
+.b4{background:color-mix(in srgb, var(--c4) 20%, white)}
+@media(min-width:1000px){ .chip{height:72px; font-size:24px} }
 
-    .vote-row{display:grid; gap:10px; grid-template-columns:1fr 1fr; margin-top:10px}
-    @media(min-width:1000px){ .vote-row{grid-template-columns:repeat(4,1fr)} }
-    .chip{width:100%; height:64px; font-size:22px; font-weight:800; border:1px solid var(--border); border-radius:12px; background:#f4f4f5; cursor:pointer; transition:transform .07s ease, background .15s ease, box-shadow .15s ease;}
-    .chip:hover{background:#e9e9eb} .chip:active{transform:scale(.98)}
-    .b1{background:color-mix(in srgb, var(--c1) 18%, white)}
-    .b2{background:color-mix(in srgb, var(--c2) 16%, white)}
-    .b3{background:color-mix(in srgb, var(--c3) 20%, white)}
-    .b4{background:color-mix(in srgb, var(--c4) 20%, white)}
-    @media(min-width:1000px){ .chip{height:72px; font-size:24px} }
-    .chip.selected{outline:2px solid var(--brand); box-shadow:0 0 0 4px color-mix(in srgb, var(--brand) 20%, transparent) inset; transform: translateY(-1px);}
-    .chip[disabled]{opacity:.6; pointer-events:none; filter:grayscale(.2)}
+/* 選択中の見た目（明るく）＆連打ガード */
+.chip.selected{
+  position:relative; outline:2px solid var(--brand);
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent) inset;
+  transform: translateY(-1px); filter:brightness(1.03)
+}
+.chip[disabled]{opacity:.6; pointer-events:none; filter:grayscale(.2)}
 
-    .skip-row{margin-top:6px}
-    .skip{font-size:12px;color:#6b7280;text-decoration:underline;background:transparent;border:0;cursor:pointer;white-space:nowrap}
+.skip-row{margin-top:6px}
+.skip{font-size:12px;color:#6b7280;text-decoration:underline;background:transparent;border:0;cursor:pointer}
 
-    /* 結果 */
-    .results{display:none;flex-direction:column;gap:8px}
-    .bar{position:relative;height:30px;border-radius:4px;background:#f3f4f6;border:1px solid #e5e7eb;overflow:hidden}
-    .seg{position:absolute;top:0;bottom:0}
-    .seg.b1{background:var(--c1)} .seg.b2{background:var(--c2)} .seg.b3{background:var(--c3)} .seg.b4{background:var(--c4)}
-    .legend{display:flex;gap:10px;flex-wrap:wrap;color:#374151;font-size:13px}
-    .legend span{display:inline-flex;align-items:center;gap:6px}
-    .dot{width:12px;height:12px;border-radius:999px;display:inline-block}
-    .hint{font-size:12px;color:var(--muted)}
-    .primary-btn{background:#fff; color:var(--brand); border:1.5px solid var(--brand); border-radius:12px; padding:8px 14px; font-weight:700; font-size:14px;}
-    .primary-btn:hover{ background:color-mix(in srgb, var(--brand) 8%, #fff) }
+/* 集計バー */
+.results{display:none;flex-direction:column;gap:8px}
+.bar{position:relative;height:30px;border-radius:8px;background:#f3f4f6;border:1px solid #e5e7eb;overflow:hidden}
+.seg{position:absolute;top:0;bottom:0}
+.seg.b1{background:var(--c1)} .seg.b2{background:var(--c2)} .seg.b3{background:var(--c3)} .seg.b4{background:var(--c4)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;color:#374151;font-size:13px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:12px;height:12px;border-radius:999px;display:inline-block}
+.hint{font-size:12px;color:var(--muted)}
 
-    /* 共有/削除（常時表示） */
-    .btns-row{display:flex;gap:8px;flex-wrap:wrap}
-    .btn-x{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--xblue); color:#0b67a7; background:#fff; border-radius:12px; padding:6px 10px; font-weight:600; font-size:13px;}
-    .btn-x:hover{ background:#f0f8ff }
-    .btn-danger-ghost{display:inline-flex; align-items:center; border:1px solid color-mix(in srgb, var(--danger) 50%, #eee); color:var(--danger); background:#fff; border-radius:12px; padding:6px 10px; font-size:13px;}
-    .btn-danger-ghost:hover{ background:#fff5f5 }
+/* 右シート */
+.sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none}
+.sheet{position:fixed;right:0;top:0;bottom:0;width:min(520px,100%);background:#fff;box-shadow:-10px 0 30px rgba(0,0,0,.2);display:none;flex-direction:column}
+.sheet header{padding:16px;border-bottom:1px solid var(--border)}
+.sheet .body{padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:calc(100vh - 56px)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px}
+.tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
+.note{font-size:12px;color:var(--muted);line-height:1.6}
+.msg{font-size:14px}
+.item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:8px}
+.item a{color:#111;text-decoration:none}
+.item a:hover{text-decoration:underline}
 
-    /* 検索 */
-    .search-card .prompt{font-weight:600;font-size:13px;color:var(--muted)}
-    .search-row{display:flex;gap:8px;flex-wrap:wrap}
-    .search-inline{display:grid; grid-template-columns:1fr auto; align-items:center}
-    .search-card input[type="text"]{width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px;}
+.subtle{opacity:.6; font-size:12px}
+.subtle:hover{opacity:.8}
 
-    /* Mana/XP：カード最下部・控えめ */
-    .hud{margin-top:10px; font-size:12px; color:#6b7280; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
-    .hud .progress{position:relative; width:140px; height:6px; border-radius:999px; background:#eee; overflow:hidden; border:1px solid #e5e7eb}
-    .hud .progress i{position:absolute; inset:0 auto 0 0; width:0; background:#e11d48; opacity:.7}
-    .hud .rt{min-width:36px; text-align:right}
+.search-card{display:flex;flex-direction:column;gap:12px}
+.search-row{display:flex;gap:8px;flex-wrap:nowrap}
+input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1px solid var(--border); border-radius:10px; font-size:15px}
 
-    .mana-pips{display:flex;gap:6px;align-items:center}
-    .mana{width:16px;height:16px;border-radius:999px;display:inline-grid;place-items:center;font-size:10px;font-weight:800;color:#fff;opacity:.9}
-    .mana.W{background:#f8f9fb;color:#111;border:1px solid #d1d5db}
-    .mana.U{background:#3B82F6}
-    .mana.B{background:#111}
-    .mana.R{background:#EF4444}
-    .mana.G{background:#10B981}
-    .mana.C{background:#9CA3AF;color:#111}
+/* トースト */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:999px;display:none}
 
-    /* 自分の登録（ミニ集計＋オーバーレイ） */
-    .mini {display:flex; align-items:center; gap:8px; margin-left:auto; position:relative}
-    .miniBar{position:relative; width:120px; height:12px; border-radius:4px; background:#f3f4f6; border:1px solid #e5e7eb; overflow:hidden}
-    .miniSeg{position:absolute; top:0; bottom:0}
-    .miniSeg.b1{background:var(--c1)} .miniSeg.b2{background:var(--c2)} .miniSeg.b3{background:var(--c3)} .miniSeg.b4{background:var(--c4)}
-    .miniOverlay{display:none; position:absolute; inset:auto 0 100% auto; transform:translateY(-6px); background:rgba(17,24,39,.92); color:#fff; font-size:11px; padding:6px 8px; border-radius:6px; white-space:nowrap; box-shadow:0 4px 10px rgba(0,0,0,.2);}
-    .mini:hover .miniOverlay{display:block}
-
-    /* シートの入力欄を横いっぱいに */
-    .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none}
-    .sheet{position:fixed;right:0;top:0;bottom:0;width:min(520px,100%);background:#fff;box-shadow:-10px 0 30px rgba(0,0,0,.2);display:none;flex-direction:column}
-    .sheet header{padding:16px;border-bottom:1px solid var(--border)}
-    .sheet .body{padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto;max-height:calc(100vh - 56px)}
-    .tabs{display:flex;gap:8px;flex-wrap:wrap}
-    .tab{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:13px}
-    .tab.active{background:var(--brand);border-color:var(--brand);color:#fff}
-    .sheet .body .search-row{display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center}
-    .sheet .body input[type="text"]{width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px}
-
-    .note{font-size:12px;color:var(--muted);line-height:1.6}
-    .msg{font-size:14px}
-    .item{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:10px;padding:8px}
-    .item a{color:#111;text-decoration:none}
-    .item a:hover{text-decoration:underline}
-
-    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 14px;border-radius:999px;display:none}
-
-    /* NOTE：スマホは改行OK／PCは1行 */
-    .nowrap-note{white-space:normal}
-    @media (min-width: 700px){ .nowrap-note{white-space:nowrap} }
-  </style>
+/* Mana/XP バー（控えめ・灰色・短い） */
+.mana-wrap{display:flex;align-items:center;gap:6px;margin-top:6px}
+.mana-bar{
+  width:88px; height:4px;
+  background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; overflow:hidden
+}
+.mana-bar > i{display:block;height:100%;width:0;background:#cbd5e1}
+.mana-label{font-size:12px;color:var(--muted)}
+.mana-syms{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.sym{width:16px;height:16px;border-radius:999px;border:1px solid #e5e7eb;display:inline-flex;align-items:center;justify-content:center;font-size:11px;line-height:1;background:#fff}
+.sym.W{background:#fefce8;border-color:#fde68a}
+.sym.U{background:#eff6ff;border-color:#bfdbfe}
+.sym.B{background:#f5f5f5;border-color:#d4d4d4}
+.sym.R{background:#fee2e2;border-color:#fecaca}
+.sym.G{background:#ecfdf5;border-color:#bbf7d0}
+.sym.C{background:#f3f4f6;border-color:#e5e7eb}
+.rt{font-size:12px;color:#9ca3af;margin-left:6px}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="title">
-        <a class="site" href="./">みんなでブラケット診断</a>
-        <div class="deck-meta">
-          <a data-deck-title id="deckTitle" href="#" target="_blank" rel="noopener noreferrer">Hareruya Deck</a>
-          <span data-deck-date style="display:none">0000/00/00</span>
-        </div>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <a href="./" class="site" style="color:inherit;text-decoration:none">みんなでブラケット診断</a>
+      <div class="deck-meta">
+        <a class="deck-link" data-deck-title target="_blank" rel="noopener">Hareruya Deck</a>
+        <span data-deck-date style="display:none">0000/00/00</span>
       </div>
-      <button id="openSheet" class="small-btn">登録 / 削除</button>
-    </header>
+    </div>
+    <button id="openSheet" class="small-btn">登録 / 削除</button>
+  </header>
 
-    <div class="grid">
-      <div class="embed-wrap card">
-        <iframe id="deckFrame" title="Hareruya Deck"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation-by-user-activation"
-                loading="eager"></iframe>
-        <div class="overlay" id="embedFail">
-          <div class="box">
-            <h3>ページを表示できませんでした</h3>
-            <p>ブラウザや拡張機能の制限で埋め込みがブロックされる場合があります。下のリンクから新しいタブで開いてください。</p>
-            <div class="row">
-              <a id="openHareruyaLink" target="_blank" rel="noopener noreferrer">hareruyamtg.com で開く</a>
-              <button id="retryEmbed">再読み込み</button>
-            </div>
-            <p class="note" style="margin-top:10px">※ iOS/Safariの場合、トラッキング防止/コンテンツブロッカー設定により表示されないことがあります。</p>
+  <div class="grid">
+    <div class="embed-wrap card">
+      <iframe id="deckFrame" title="Hareruya Deck"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation-by-user-activation"
+              loading="eager"></iframe>
+
+      <div class="overlay" id="embedFail">
+        <div class="box">
+          <h3>ページを表示できませんでした</h3>
+          <p>ブラウザや拡張機能の制限で埋め込みがブロックされる場合があります。下のリンクから新しいタブで開いてください。</p>
+          <div class="row">
+            <a id="openHareruyaLink" target="_blank" rel="noopener noreferrer">hareruyamtg.com で開く</a>
+            <button id="retryEmbed">再読み込み</button>
           </div>
+          <p class="note" style="margin-top:10px">※ iOS/Safariの場合、トラッキング防止/コンテンツブロッカー設定により表示されないことがあります。</p>
         </div>
-      </div>
-
-      <div class="card vote-card">
-        <div class="vote-block">
-          <div class="prompt">このデッキのブラケットは？</div>
-          <div class="vote-row">
-            <button class="chip b1" data-vote="1">１</button>
-            <button class="chip b2" data-vote="2">２</button>
-            <button class="chip b3" data-vote="3">３</button>
-            <button class="chip b4" data-vote="4">４</button>
-          </div>
-          <div class="skip-row">
-            <button class="skip" id="skipBtn" title="このデッキは評価しない">回答しない</button>
-          </div>
-          <div class="hint">※ 同じデッキは1つだけ記録（あとから変更できます）</div>
-        </div>
-
-        <div class="results" id="results">
-          <div class="bar" aria-label="集計バー">
-            <div class="seg b1" id="seg1" style="left:0;width:0%"></div>
-            <div class="seg b2" id="seg2" style="left:0;width:0%"></div>
-            <div class="seg b3" id="seg3" style="left:0;width:0%"></div>
-            <div class="seg b4" id="seg4" style="left:0;width:0%"></div>
-          </div>
-          <div class="legend">
-            <span><i class="dot" style="background:var(--c1)"></i> 1 <b id="p1">0%</b></span>
-            <span><i class="dot" style="background:var(--c2)"></i> 2 <b id="p2">0%</b></span>
-            <span><i class="dot" style="background:var(--c3)"></i> 3 <b id="p3">0%</b></span>
-            <span><i class="dot" style="background:var(--c4)"></i> 4 <b id="p4">0%</b></span>
-          </div>
-          <div class="hint" id="deckRtStat" style="display:none"></div>
-
-          <div style="display:flex;gap:8px;margin-top:2px;align-items:center;flex-wrap:wrap">
-            <button id="nextBtn" class="primary-btn">▶ 次のデッキへ</button>
-            <span class="hint" id="autoNextHint"></span>
-          </div>
-        </div>
-
-        <!-- ▼ 共有/削除：常時表示 -->
-        <div class="btns-row" style="margin-top:6px">
-          <button id="shareBtn" class="btn-x" title="Xで共有">X でシェア</button>
-          <button id="reportBtn" class="btn-danger-ghost" title="このデッキに削除希望を出す">削除希望</button>
-        </div>
-        <!-- ▲ 共有/削除 -->
-
-        <!-- ▼ Mana/XP（最下部・控えめ） -->
-        <div class="hud" id="hud">
-          <span>Mana <b id="lv">0</b> · <span id="xp">0</span>XP</span>
-          <div class="progress"><i id="xpbar"></i></div>
-          <span class="rt" id="lastRtHud" style="display:none">0.0s</span>
-          <div class="mana-pips" id="pips"></div>
-        </div>
-        <!-- ▲ Mana/XP -->
       </div>
     </div>
 
-    <div class="card search-card" style="margin-top:16px">
-      <div class="prompt">検索</div>
-      <div class="search-row search-inline">
-        <input type="text" id="searchInput" placeholder="例: https://www.hareruyamtg.com/decks/0000000  または 0000000">
-        <button id="searchBtn" class="small-btn" style="background:#fff">検索</button>
+    <div class="card vote-card">
+      <div class="vote-block">
+        <div class="prompt">このデッキのブラケットは？</div>
+        <div class="vote-row">
+          <button class="chip b1" data-vote="1">１</button>
+          <button class="chip b2" data-vote="2">２</button>
+          <button class="chip b3" data-vote="3">３</button>
+          <button class="chip b4" data-vote="4">４</button>
+        </div>
+        <div class="skip-row">
+          <button class="skip" id="skipBtn" title="このデッキは評価しない">回答しない</button>
+        </div>
+        <div class="hint">※ 同じデッキは1つだけ記録（あとから変更できます）</div>
       </div>
-    </div>
 
-    <footer class="card" style="margin-top:16px">
-      <div class="note">
-        ※ 本サイトは外部サイトのページを埋め込み表示します。掲載URLはユーザー投稿であり、
-        内容の正確性・合法性を保証しません。著作権等の権利は各権利者に帰属します。
-        不適切・権利侵害の疑いがあるURLは「削除希望」からご連絡ください。必要に応じて削除対応します。
+      <div class="results" id="results">
+        <div class="bar" aria-label="集計バー">
+          <div class="seg b1" id="seg1" style="left:0;width:0%"></div>
+          <div class="seg b2" id="seg2" style="left:0;width:0%"></div>
+          <div class="seg b3" id="seg3" style="left:0;width:0%"></div>
+          <div class="seg b4" id="seg4" style="left:0;width:0%"></div>
+        </div>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--c1)"></i> 1 <b id="p1">0%</b></span>
+          <span><i class="dot" style="background:var(--c2)"></i> 2 <b id="p2">0%</b></span>
+          <span><i class="dot" style="background:var(--c3)"></i> 3 <b id="p3">0%</b></span>
+          <span><i class="dot" style="background:var(--c4)"></i> 4 <b id="p4">0%</b></span>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+          <button id="nextBtn" class="small-btn primary">▶ 次のデッキへ</button>
+          <span class="hint" id="autoNextHint"></span>
+          <span class="right"></span>
+        </div>
       </div>
-    </footer>
+
+      <!-- 常時表示の操作ボタン -->
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button id="shareBtn" class="small-btn">Xでシェア</button>
+        <button id="reportBtn" class="small-btn subtle">削除希望</button>
+      </div>
+
+      <!-- Mana/XP（控えめ） -->
+      <div class="mana-wrap">
+        <span class="mana-label"><span id="manaLv">0</span> Mana</span>
+        <div class="mana-bar"><i id="manaFill" style="width:0%"></i></div>
+        <span class="rt" id="rtLabel" style="display:none">0sec</span>
+      </div>
+      <div class="mana-syms" id="manaSyms"></div>
+    </div>
   </div>
 
-  <!-- 右シート -->
-  <div class="sheet-backdrop" id="backdrop"></div>
-  <aside class="sheet" id="sheet">
-    <header>
-      <div style="font-weight:700">登録 / 削除</div>
-      <button id="closeSheet" class="small-btn right">閉じる</button>
-    </header>
-    <div class="body">
-      <div class="tabs">
-        <button class="tab active" data-tab="reg">登録</button>
-        <button class="tab" data-tab="del">削除（通報）</button>
-        <button class="tab" data-tab="mine">自分の登録</button>
-      </div>
-
-      <div id="pane-reg">
-        <div class="note">晴れる屋デッキのURL（または数字ID）を入力して「登録」。</div>
-        <div class="note">形式: https://www.hareruyamtg.com/decks/＜数字＞</div>
-        <div class="search-row">
-          <input type="text" id="regUrl" placeholder="例: https://www.hareruyamtg.com/decks/0000000">
-          <button id="regBtn" class="small-btn">登録</button>
-        </div>
-        <div class="msg" id="regMsg"></div>
-      </div>
-
-      <div id="pane-del" style="display:none">
-        <div class="note">削除してほしいデッキのURL（または数字ID）を入力して「通報」。一定数で自動削除。</div>
-        <div class="search-row">
-          <input type="text" id="delUrl" placeholder="例: https://www.hareruyamtg.com/decks/0000000">
-          <button id="delBtn" class="small-btn">通報</button>
-        </div>
-        <div class="msg" id="delMsg"></div>
-      </div>
-
-      <div id="pane-mine" style="display:none">
-        <div class="note">あなたが登録したデッキ一覧（最大50件）。ここから削除できます。</div>
-        <div style="display:flex;gap:8px;margin-bottom:6px">
-          <button id="reloadMine" class="small-btn">更新</button>
-        </div>
-        <div id="mineList" style="display:flex;flex-direction:column;gap:8px"></div>
-      </div>
+  <div class="card search-card" style="margin-top:16px">
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="例: https://www.hareruyamtg.com/decks/0000000  または 0000000">
+      <button id="searchBtn" class="small-btn">検索</button>
     </div>
-  </aside>
+  </div>
 
-  <div class="toast" id="toast"></div>
+  <!-- リーガル -->
+  <footer class="card" style="margin-top:16px">
+    <div class="note">
+      ※ 本サイトは外部サイトのページを埋め込み表示します。掲載URLはユーザー投稿であり、
+      内容の正確性・合法性を保証しません。著作権等の権利は各権利者に帰属します。
+      不適切・権利侵害の疑いがあるURLは「削除希望」からご連絡ください。必要に応じて削除対応します。
+    </div>
+  </footer>
+</div>
 
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+<!-- 右シート -->
+<div class="sheet-backdrop" id="backdrop"></div>
+<aside class="sheet" id="sheet">
+  <header>
+    <div style="font-weight:700">登録 / 削除</div>
+    <button id="closeSheet" class="small-btn right">閉じる</button>
+  </header>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab active" data-tab="reg">登録</button>
+      <button class="tab" data-tab="del">削除（通報）</button>
+      <button class="tab" data-tab="mine">自分の登録</button>
+    </div>
 
-    // ========= 設定 =========
-    const SUPABASE_URL  = "https://onzljxnqlrohkzsfxqbh.supabase.co";
-    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemxqeG5xbHJvaGt6c2Z4cWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NzUzNTksImV4cCI6MjA3MTE1MTM1OX0.eLAP_-PtVm6tBFFCNfOVsTqEcvtZK3x3QFFNeRpxuj8";
-    const FN_INGEST     = `${SUPABASE_URL}/functions/v1/ingest-hareruya`;
-    const FN_REPORT     = `${SUPABASE_URL}/functions/v1/report-deck`;
-    const FN_DELETE_OWN = `${SUPABASE_URL}/functions/v1/delete-own-deck`;
-    const FN_VOTE       = `${SUPABASE_URL}/functions/v1/vote`;
-    const APP_URL       = `${location.origin}${location.pathname}`;
-    const RPC_RANDOM    = "random_deck_for_session_v2";
-    const SHOW_DECK_STATS = false;
-    const DECK_STATS_DAYS = 14;
-    const REPORT_NEXT_DELAY_MS = 1500;
+    <div id="pane-reg">
+      <div class="note">
+        晴れる屋デッキのURL（または数字ID）を入力して「登録」<br>
+        形式: https://www.hareruyamtg.com/decks/＜数字＞
+      </div>
+      <div class="search-row">
+        <input type="text" id="regUrl" placeholder="例: https://www.hareruyamtg.com/decks/0000000">
+        <button id="regBtn" class="small-btn">登録</button>
+      </div>
+      <div class="msg" id="regMsg"></div>
+    </div>
 
-    const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
-      auth: { persistSession:false, autoRefreshToken:false },
-      global: { headers: { apikey: SUPABASE_ANON } },
-    });
+    <div id="pane-del" style="display:none">
+      <div class="note">削除してほしいデッキのURL（または数字ID）を入力して「通報」。一定数で自動削除。</div>
+      <div class="search-row">
+        <input type="text" id="delUrl" placeholder="例: https://www.hareruyamtg.com/decks/0000000">
+        <button id="delBtn" class="small-btn">通報</button>
+      </div>
+      <div class="msg" id="delMsg"></div>
+    </div>
 
-    // ========= ユーティリティ =========
-    const $ = (q)=>document.querySelector(q);
-    const sid = (localStorage.getItem("sid") || (crypto?.randomUUID?.() ? crypto.randomUUID() : String(Math.random()).slice(2)+"-"+Date.now()));
-    localStorage.setItem("sid", sid);
+    <div id="pane-mine" style="display:none">
+      <div class="note">あなたが登録したデッキ一覧（最大50件）。ここから削除できます。</div>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <button id="reloadMine" class="small-btn">更新</button>
+      </div>
+      <div id="mineList" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+</aside>
 
-    const toastEl = $("#toast");
-    function toast(msg){ toastEl.textContent=msg; toastEl.style.display="block"; clearTimeout(toastEl._t); toastEl._t=setTimeout(()=>toastEl.style.display="none", 2000); }
+<div class="toast" id="toast"></div>
 
-    function toDeckId(input){
-      const s = String(input||"").trim();
-      return s.match(/decks\/(\d+)/)?.[1]
-          || s.match(/deck\.hareruyamtg\.com\/(\d+)/)?.[1]
-          || (/^\d{4,}$/.test(s) ? s : null);
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+/* ====== Supabase 設定 ====== */
+const SUPABASE_URL  = "https://onzljxnqlrohkzsfxqbh.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemxqeG5xbHJvaGt6c2Z4cWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NzUzNTksImV4cCI6MjA3MTE1MTM1OX0.eLAP_-PtVm6tBFFCNfOVsTqEcvtZK3x3QFFNeRpxuj8";
+const FN_INGEST     = `${SUPABASE_URL}/functions/v1/ingest-hareruya`;
+const FN_REPORT     = `${SUPABASE_URL}/functions/v1/report-deck`;
+const FN_DELETE_OWN = `${SUPABASE_URL}/functions/v1/delete-own-deck`;
+const FN_VOTE       = `${SUPABASE_URL}/functions/v1/vote`;
+const FN_SKIP       = `${SUPABASE_URL}/functions/v1/skip`;
+const APP_URL       = `${location.origin}${location.pathname}`;
+
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: { persistSession:false, autoRefreshToken:false },
+  global: { headers: { apikey: SUPABASE_ANON } },
+});
+
+/* ====== Util ====== */
+const $ = (q)=>document.querySelector(q);
+const sid = (localStorage.getItem("sid") || (crypto?.randomUUID?.() ? crypto.randomUUID() : String(Math.random()).slice(2)+"-"+Date.now()));
+localStorage.setItem("sid", sid);
+
+const toastEl = $("#toast");
+function toast(msg){ toastEl.textContent=msg; toastEl.style.display="block"; clearTimeout(toastEl._t); toastEl._t=setTimeout(()=>toastEl.style.display="none", 2000); }
+
+function toDeckId(input){
+  const s = String(input||"").trim();
+  return s.match(/decks\/(\d+)/)?.[1]
+      || s.match(/deck\.hareruyamtg\.com\/(\d+)/)?.[1]
+      || (/^\d{4,}$/.test(s) ? s : null);
+}
+function canonUrl(input){ const id = toDeckId(input); return id ? `https://www.hareruyamtg.com/decks/${id}` : null; }
+
+/* ====== 埋め込み ====== */
+const frame = $("#deckFrame"), fail = $("#embedFail");
+const openHareruyaLink = $("#openHareruyaLink"), retryEmbed = $("#retryEmbed");
+let embedWatch = null;
+function setEmbed(inputUrl){
+  const s = String(inputUrl || "").trim();
+  const m = s.match(/decks\/(\d+)/) || s.match(/deck\.hareruyamtg\.com\/(\d+)/) || s.match(/^(\d{4,})$/);
+  const id = m ? m[1] : null;
+  if (!id) { frame.src = "about:blank"; fail.style.display="flex"; return; }
+  const wwwUrl  = `https://www.hareruyamtg.com/decks/${id}`;
+  openHareruyaLink.href = wwwUrl;
+  fail.style.display="none"; frame.removeAttribute("src"); frame.src = wwwUrl;
+  clearTimeout(embedWatch); embedWatch = setTimeout(()=>{ fail.style.display="flex"; }, 6000);
+}
+frame.addEventListener("load", ()=> { clearTimeout(embedWatch); });
+retryEmbed.addEventListener("click", ()=> { if (currentDeck?.source_url) setEmbed(currentDeck.source_url); });
+
+/* ====== 状態 ====== */
+let currentDeck = null;
+let autoNextTimer = null;
+
+/* ====== 集計 ====== */
+const resultsEl = $("#results");
+const seg1=$("#seg1"), seg2=$("#seg2"), seg3=$("#seg3"), seg4=$("#seg4");
+const p1=$("#p1"), p2=$("#p2"), p3=$("#p3"), p4=$("#p4");
+const nextBtn=$("#nextBtn");
+const autoNextHint=$("#autoNextHint");
+
+// 反応時間計測
+let deckShownAtMs = 0;
+// 既に自分が投票済みか
+let hadMyVoteBefore = false;
+
+function renderChart(c1,c2,c3,c4){
+  const total=Math.max(0,c1+c2+c3+c4);
+  const per = total? [c1/total*100,c2/total*100,c3/total*100,c4/total*100]:[0,0,0,0];
+  const l1 = 0, l2 = per[0], l3 = per[0]+per[1], l4 = per[0]+per[1]+per[2];
+  seg1.style.left=`${l1}%`; seg1.style.width=`${per[0]}%`;
+  seg2.style.left=`${l2}%`; seg2.style.width=`${per[1]}%`;
+  seg3.style.left=`${l3}%`; seg3.style.width=`${per[2]}%`;
+  seg4.style.left=`${l4}%`; seg4.style.width=`${per[3]}%`;
+  p1.textContent=`${Math.round(per[0])}%`;
+  p2.textContent=`${Math.round(per[1])}%`;
+  p3.textContent=`${Math.round(per[2])}%`;
+  p4.textContent=`${Math.round(per[3])}%`;
+}
+async function loadVotesAndRenderResults(forceShow=false){
+  if(!currentDeck) return;
+  const { data } = await sb.from("labels").select("bracket").eq("deck_id", currentDeck.id).limit(10000);
+  let c1=0,c2=0,c3=0,c4=0;
+  for(const r of (data||[])){
+    if(r.bracket===1)c1++; else if(r.bracket===2)c2++; else if(r.bracket===3)c3++; else if(r.bracket===4)c4++;
+  }
+  renderChart(c1,c2,c3,c4); if(forceShow) resultsEl.style.display="flex";
+}
+
+/* ====== 自分の投票 ====== */
+const voteChips = Array.from(document.querySelectorAll(".chip[data-vote]"));
+function markMyVote(bracket){
+  voteChips.forEach(btn=>{
+    const isSel = Number(btn.dataset.vote) === Number(bracket);
+    btn.classList.toggle("selected", !!bracket && isSel);
+    btn.setAttribute("aria-pressed", String(!!bracket && isSel));
+  });
+}
+async function loadMyVote(){
+  if(!currentDeck) { markMyVote(null); hadMyVoteBefore=false; return null; }
+  const { data } = await sb.from("labels")
+    .select("bracket")
+    .eq("deck_id", currentDeck.id)
+    .eq("session_id", sid)
+    .maybeSingle();
+  const b = data?.bracket ?? null;
+  hadMyVoteBefore = b !== null;
+  markMyVote(b);
+  return b;
+}
+
+/* ====== Mana/XP（ローカル保存） ====== */
+const xpKey = "xp_v2";
+const manaLvEl = $("#manaLv"), manaFill = $("#manaFill"), manaSyms = $("#manaSyms"), rtLabel = $("#rtLabel");
+
+// levelごとの累積必要XP（Lv1..16）
+const lvNeed = [10,30,70,150,310,630,1270,2550,5110,10230,20470,40950,81910,163830,327670,655350];
+
+function loadXP(){ try{ return JSON.parse(localStorage.getItem(xpKey)||"{}"); }catch{ return {}; } }
+function saveXP(s){ localStorage.setItem(xpKey, JSON.stringify(s)); }
+function ensureXP(){
+  const s = loadXP();
+  s.xp ??= 0; s.lv ??= 0;
+  s.mana ??= { C:0, W:0, U:0, B:0, R:0, G:0 }; // 無色C
+  return s;
+}
+
+function updateXpUI(){
+  const s = ensureXP();
+
+  // 数値は見せず、バーの伸びのみ
+  const prevNeed = s.lv ? lvNeed[s.lv-1] : 0;
+  const nextNeed = lvNeed[s.lv] ?? lvNeed[lvNeed.length-1];
+  const cur = Math.max(0, s.xp - prevNeed);
+  const denom = Math.max(1, nextNeed - prevNeed);
+  const pct = Math.max(0, Math.min(100, Math.round(cur / denom * 100)));
+
+  manaLvEl.textContent = s.lv;     // 「0 Mana」
+  manaFill.style.width = pct + "%";
+
+  // 並び替え：無色 > W > U > B > R > G
+  const order = ["C","W","U","B","R","G"];
+  const syms = [];
+  // 無色は ①②… で集約表示
+  if (s.mana.C>0){
+    const circled = (n)=>{
+      const base = 9311; // ① U+2460
+      return (n>=1 && n<=20) ? String.fromCharCode(base+n) : String(n);
+    };
+    syms.push(`<span class="sym C">${circled(s.mana.C)}</span>`);
+  }
+  for(const k of order.slice(1)){
+    for(let i=0;i<s.mana[k];i++){
+      syms.push(`<span class="sym ${k}">${k}</span>`);
     }
-    function canonUrl(input){ const id = toDeckId(input); return id ? `https://www.hareruyamtg.com/decks/${id}` : null; }
+  }
+  manaSyms.innerHTML = syms.join("");
+}
 
-    // ===== 埋め込み =====
-    const frame = document.getElementById("deckFrame");
-    const fail  = document.getElementById("embedFail");
-    const openHareruyaLink = document.getElementById("openHareruyaLink");
-    const retryEmbed = document.getElementById("retryEmbed");
-    let embedWatch = null;
+/** レベルアップ時のマナ付与ルール（青=ぞろ目のみ、無色=未該当+末尾0秒） */
+function awardManaByRule(rtSec){
+  const now = new Date(); const h = now.getHours();
+  const isAM = h < 12; const isPM = !isAM;
+  const sec = now.getSeconds();
+  const isZeroTail = (sec % 10 === 0);                                // 末尾0秒
+  const isDbl = (Math.floor(sec/10) === (sec % 10) && sec !== 0);     // 11,22,33,44,55
 
-    function setEmbed(inputUrl){
-      const s = String(inputUrl || "").trim();
-      const m = s.match(/decks\/(\d+)/) || s.match(/deck\.hareruyamtg\.com\/(\d+)/) || s.match(/^(\d{4,})$/);
-      const id = m ? m[1] : null;
-      if (!id) { frame.src = "about:blank"; fail.style.display="flex"; return; }
-      const wwwUrl  = `https://www.hareruyamtg.com/decks/${id}`;
-      openHareruyaLink.href = wwwUrl;
-      fail.style.display="none";
-      frame.removeAttribute("src");
-      frame.src = wwwUrl;
-      clearTimeout(embedWatch);
-      embedWatch = setTimeout(()=>{ fail.style.display="flex"; }, 4000);
+  let color = "C"; // default 無色
+
+  // 優先順：U(ぞろ目) → R/G/W/B → C(未該当 or 末尾0)
+  if (isDbl) color = "U";
+  else if (rtSec <= 20 && isPM) color = "R";
+  else if (rtSec >= 50 && isAM) color = "G";
+  else if (rtSec >=21 && rtSec <=59 && isAM) color = "W";
+  else if (rtSec >=21 && rtSec <=59 && isPM) color = "B";
+  else if (isZeroTail) color = "C"; // 末尾0秒は無色へ
+  else color = "C";                 // どれにも当てはまらなければ無色
+
+  const s = ensureXP();
+  s.mana[color] = (s.mana[color]||0) + 1;
+  saveXP(s);
+  updateXpUI();
+}
+
+/** 1デッキ1回だけXPを付与（“ぞろ目秒”なら +1 ボーナス） */
+function addXPIfFirstVote(rtSec){
+  if (hadMyVoteBefore) return; // 1デッキ1XP
+
+  const s = ensureXP();
+
+  // 基本 +1、投票成立時が「ぞろ目秒」なら +1 ボーナス
+  let delta = 1;
+  const nowSec = (new Date()).getSeconds();
+  const isDbl = (Math.floor(nowSec/10) === (nowSec % 10) && nowSec !== 0); // 11,22,33,44,55
+  if (isDbl) delta += 1;
+
+  s.xp = (s.xp||0) + delta;
+
+  // レベルアップ判定
+  const nextLvNeed = lvNeed[s.lv] ?? Infinity;
+  if (s.xp >= nextLvNeed){
+    s.lv++;
+    saveXP(s);
+    awardManaByRule(rtSec);
+  }else{
+    saveXP(s);
+  }
+  updateXpUI();
+}
+
+/* ====== 表示 ====== */
+async function showDeckByRow(row,{showResults=false}={}){
+  currentDeck = row;
+  markMyVote(null);
+  setEmbed(row.source_url);
+
+  const id = toDeckId(row.source_url);
+  if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
+
+  const titleEl=document.querySelector('[data-deck-title]');
+  titleEl.textContent = row.deck_name || (id ? `Hareruya Deck #${id}` : "Hareruya Deck");
+  titleEl.href = row.source_url;
+
+  $("#results").style.display = showResults ? "flex":"none";
+  await loadVotesAndRenderResults(showResults);
+  await loadMyVote();
+
+  clearInterval(autoNextTimer); autoNextTimer=null; autoNextHint.textContent="";
+
+  // インプレッション記録 & 反応時間開始
+  try{ await sb.rpc("log_impression",{ p_session:sid, p_deck: row.id }); }catch(_){}
+  deckShownAtMs = performance.now();
+}
+
+/* ====== ランダム（未回答優先 + “新しい/投票少ない”を優先） ====== */
+async function loadRandomDeck(){
+  const { data, error } = await sb.rpc("random_deck_for_session", { p_session: sid });
+  if (error) { toast("読み込みエラー"); return; }
+  const row = (Array.isArray(data) ? data[0] : null);
+  if (!row) { toast("未回答のデッキがありません"); return; }
+  await showDeckByRow(row,{showResults:false});
+}
+
+/* ====== 登録存在確認 ====== */
+async function ensureDeckExists(url){
+  const { data } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
+  if(data?.id) return data;
+  const res = await fetch(FN_INGEST,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+    body: JSON.stringify({ url, session_id:sid })
+  });
+  const j = await res.json().catch(()=> ({}));
+  if(res.ok && j.ok){
+    const { data: after } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
+    if(after?.id) return after;
+  }
+  throw new Error(j?.error || "登録に失敗しました");
+}
+
+/* ====== 投票 ====== */
+let voting = false;
+function setVoting(b){ voting=b; voteChips.forEach(btn => btn.disabled = b); }
+
+async function postVoteOnce(bracket, rtSec){
+  const res = await fetch(FN_VOTE, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + SUPABASE_ANON,
+      "apikey": SUPABASE_ANON
+    },
+    body: JSON.stringify({
+      deck_id: currentDeck.id,
+      session_id: sid,
+      bracket,
+      rt_sec: rtSec
+    })
+  });
+  let ok = res.ok;
+  try {
+    const j = await res.clone().json();
+    if (j && j.ok === false) ok = false;
+  } catch(_){}
+  return { ok, status: res.status };
+}
+
+async function postVoteWithRetry(bracket, rtSec){
+  const retriable = new Set([429, 409, 500, 502, 503, 504]);
+  for (let i=0; i<2; i++){
+    const { ok, status } = await postVoteOnce(bracket, rtSec);
+    if (ok) return true;
+    if (!retriable.has(status)) return false;
+    await new Promise(r=>setTimeout(r, 250));
+  }
+  return false;
+}
+
+document.querySelectorAll(".chip[data-vote]").forEach(el =>
+  el.addEventListener("click", async (e)=>{
+    if (!currentDeck || voting) return;
+
+    const bracket = Number(e.currentTarget.dataset.vote);
+    setVoting(true);
+
+    try{
+      const rtSec = Math.max(0, Math.round((performance.now() - deckShownAtMs)/1000));
+      const done = await postVoteWithRetry(bracket, rtSec);
+      if (!done){
+        toast("保存エラー。少し時間をおいて再試行してください。");
+        return;
+      }
+
+      markMyVote(bracket);
+
+      // 初回投票直後の連打でもXPが増えないよう即座にフラグを立てる
+      if (!hadMyVoteBefore) hadMyVoteBefore = true;
+
+      resultsEl.style.display="flex";
+      await loadVotesAndRenderResults(true);
+
+      // 1デッキ1XP（ぞろ目秒なら+1ボーナス）
+      addXPIfFirstVote(rtSec);
+
+      // 反応時間表示（投票後のみ）
+      const rt = document.getElementById("rtLabel");
+      if (rt){ rt.style.display="inline"; rt.textContent = `${rtSec}sec`; }
+
+      let left = 10;
+      autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+      clearInterval(autoNextTimer);
+      autoNextTimer = setInterval(()=>{
+        left--;
+        if(left<=0){
+          clearInterval(autoNextTimer);
+          autoNextTimer=null;
+          loadRandomDeck();
+        }else{
+          autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+        }
+      }, 1000);
+    }catch{
+      toast("保存エラーが発生しました。");
+    }finally{
+      setVoting(false);
     }
-    frame.addEventListener("load", ()=> { clearTimeout(embedWatch); });
-    retryEmbed.addEventListener("click", ()=> { if (currentDeck?.source_url) setEmbed(currentDeck.source_url); });
+  })
+);
 
-    // ========= 状態 =========
-    let currentDeck = null;
-    let autoNextTimer = null;
-
-    // ========= 集計 =========
-    const resultsEl = $("#results");
-    const seg1=$("#seg1"), seg2=$("#seg2"), seg3=$("#seg3"), seg4=$("#seg4");
-    const p1=$("#p1"), p2=$("#p2"), p3=$("#p3"), p4=$("#p4");
-    const nextBtn=$("#nextBtn");
-    const autoNextHint=$("#autoNextHint");
-    const lastRtHud = $("#lastRtHud");
-
-    function renderChart(c1,c2,c3,c4){
-      const total=Math.max(0,c1+c2+c3+c4);
-      const per = total? [c1/total*100,c2/total*100,c3/total*100,c4/total*100]:[0,0,0,0];
-      const l1=0, l2=per[0], l3=per[0]+per[1], l4=per[0]+per[1]+per[2];
-      seg1.style.left=`${l1}%`; seg1.style.width=`${per[0]}%`;
-      seg2.style.left=`${l2}%`; seg2.style.width=`${per[1]}%`;
-      seg3.style.left=`${l3}%`; seg3.style.width=`${per[2]}%`;
-      seg4.style.left=`${l4}%`; seg4.style.width=`${per[3]}%`;
-      p1.textContent=`${Math.round(per[0])}%`; p2.textContent=`${Math.round(per[1])}%`; p3.textContent=`${Math.round(per[2])}%`; p4.textContent=`${Math.round(per[3])}%`;
-    }
-    async function loadVotesAndRenderResults(forceShow=false){
-      if(!currentDeck) return;
-      try{
-        const { data } = await sb.from("labels").select("bracket").eq("deck_id", currentDeck.id).limit(10000);
-        let c1=0,c2=0,c3=0,c4=0;
-        for(const r of (data||[])){ if(r.bracket===1)c1++; else if(r.bracket===2)c2++; else if(r.bracket===3)c3++; else if(r.bracket===4)c4++; }
-        renderChart(c1,c2,c3,c4);
-        if(forceShow) resultsEl.style.display="flex";
-      }catch{ if(forceShow) resultsEl.style.display="flex"; }
-    }
-
-    const voteChips = Array.from(document.querySelectorAll(".chip[data-vote]"));
-    function markMyVote(bracket){
-      voteChips.forEach(btn=>{
-        const isSel = Number(btn.dataset.vote) === Number(bracket);
-        btn.classList.toggle("selected", !!bracket && isSel);
-        btn.setAttribute("aria-pressed", String(!!bracket && isSel));
-      });
-    }
-    async function loadMyVote(){
-      if(!currentDeck) { markMyVote(null); return null; }
-      const { data } = await sb.from("labels").select("bracket").eq("deck_id", currentDeck.id).eq("session_id", sid).maybeSingle();
-      const b = data?.bracket ?? null;
-      markMyVote(b);
-      return b;
-    }
-
-    // デッキ別 反応時間（管理者向けスイッチで表示）
-    async function loadDeckRtStat(){
-      const box = document.getElementById('deckRtStat');
-      if (!SHOW_DECK_STATS) { box.style.display='none'; return; }
-      if (!currentDeck) { box.style.display='none'; return; }
-      try{
-        const { data, error } = await sb.rpc('vote_time_stats_deck', { p_deck: currentDeck.id, p_days: DECK_STATS_DAYS });
-        if (error){ box.style.display='none'; return; }
-        const row = Array.isArray(data) ? (data[0] || {}) : (data || {});
-        const a = Number(row.avg_sec ?? 0).toFixed(2);
-        const m = Number(row.median_sec ?? 0).toFixed(2);
-        const c = Number(row.cnt ?? 0);
-        if (c>0){ box.textContent = `⏱ 過去${DECK_STATS_DAYS}日: 平均 ${a}s / 中央 ${m}s（${c}件）`; box.style.display='block'; }
-        else { box.style.display='none'; }
-      }catch { box.style.display='none'; }
-    }
-
-    // ========= 表示 =========
-    async function showDeckByRow(row,{showResults=false}={}){
-      currentDeck = row;
-      markMyVote(null);
-      setEmbed(row.source_url);
-      const id = toDeckId(row.source_url);
-      if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
-
-      const titleA = document.getElementById('deckTitle');
-      titleA.textContent = id ? `Hareruya Deck #${id}` : (row.deck_name || "Hareruya Deck");
-      titleA.href = row.source_url || '#';
-
-      resultsEl.style.display = showResults ? "flex":"none";
-      await loadVotesAndRenderResults(showResults);
-      await loadMyVote();
-      await loadDeckRtStat();
-
-      clearInterval(autoNextTimer); autoNextTimer=null; autoNextHint.textContent="";
-      window._deckShownAt = performance.now();
-      lastRtHud.style.display='none';
-    }
-
-    // ========= ランダム（v2） =========
-    async function loadRandomDeck(){
-      try{
-        const { data, error } = await sb.rpc(RPC_RANDOM, { p_session: sid });
-        if (error) throw error;
-        const row = Array.isArray(data) ? data[0] : data;
-        if (row) { await showDeckByRow(row,{showResults:false}); return; }
-        const { data: anyDeck } = await sb.from("decks").select("id,source_url,deck_name").order("created_at",{ascending:false}).limit(1);
-        const row2 = Array.isArray(anyDeck)? anyDeck[0] : anyDeck;
-        if (row2) { await showDeckByRow(row2,{showResults:false}); return; }
-        toast("デッキが見つかりません");
-      }catch{ toast("読み込みに失敗しました。時間をおいて再読み込みしてください。"); }
-    }
-
-    // ========= 投票（1デッキ=1XP） =========
-    let voting = false;
-    function setVoting(b){ voting=b; voteChips.forEach(btn => btn.disabled = b); }
-
-    // XPカウント（ユニークなデッキのみ）
-    const VOTE_CNT_KEY='mtgb_vote_cnt_v1';                  // 表示用カウンタ
-    const VOTED_SET_KEY='mtgb_voted_decks_v1';              // 既投票デッキ集合
-    function voteCount(){ return Number(localStorage.getItem(VOTE_CNT_KEY)||0); }
-    function hasVotedDeck(id){ try{const s=JSON.parse(localStorage.getItem(VOTED_SET_KEY)||'{}'); return !!s[id];}catch{return false} }
-    function markVotedDeck(id){
-      let s={}; try{s=JSON.parse(localStorage.getItem(VOTED_SET_KEY)||'{}')}catch{s={}}
-      if(!s[id]){ s[id]=1; localStorage.setItem(VOTED_SET_KEY, JSON.stringify(s)); localStorage.setItem(VOTE_CNT_KEY, String(voteCount()+1)); }
-    }
-
-    // レベル閾値（0..16）: [0,10,30,70,150,310,...倍々]
-    const MV_BY_VOTES = [0,10,30,70,150,310,630,1270,2550,5110,10230,20470,40950,81910,163830,327670,655350];
-    function mvFromVotes(n){ let mv=0; for(let i=0;i<MV_BY_VOTES.length;i++) if(n>=MV_BY_VOTES[i]) mv=i; return mv; }
-    function renderHUD(){
-      const n = voteCount();
-      const mv = mvFromVotes(n);
-      const cur = n - MV_BY_VOTES[mv];
-      const nextNeed = (MV_BY_VOTES[mv+1] ?? MV_BY_VOTES[mv]) - MV_BY_VOTES[mv];
-      const ratio = nextNeed>0 ? Math.max(0, Math.min(1, cur/nextNeed)) : 1;
-      $("#lv").textContent = mv; $("#xp").textContent = n; $("#xpbar").style.width = (ratio*100)+'%';
-    }
-    renderHUD();
-
-    // シーズン（月リセット）
-    const SEASON_KEY='mtgb_season_v1';
-    function ensureSeason(){
-      const now = new Date(); const season = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-      const cur = localStorage.getItem(SEASON_KEY);
-      if (cur !== season){ localStorage.removeItem('mtgb_mana_v1'); localStorage.removeItem(VOTE_CNT_KEY); localStorage.removeItem(VOTED_SET_KEY); localStorage.setItem(SEASON_KEY, season); }
-    }
-    ensureSeason();
-
-    // Mana
-    const MANA_KEY='mtgb_mana_v1';
-    function getMana(){ try{return JSON.parse(localStorage.getItem(MANA_KEY)||'{"W":0,"U":0,"B":0,"R":0,"G":0,"C":0}')}catch{return {W:0,U:0,B:0,R:0,G:0,C:0}} }
-    function setMana(m){ localStorage.setItem(MANA_KEY, JSON.stringify(m)); renderPips(); }
-    function renderPips(){ const p=$("#pips"); if(!p) return; const m=getMana(), order=['W','U','B','R','G','C']; p.innerHTML = order.filter(k=>m[k]).map(k=>`<span class="mana ${k}">${k}</span>`).join(''); }
-    renderPips();
-
-    function pushLimited(key, value, limit){
-      let arr=[]; try{arr=JSON.parse(localStorage.getItem(key)||'[]')}catch{arr=[]}
-      arr.push(value); if(arr.length>limit) arr.splice(0, arr.length-limit);
-      localStorage.setItem(key, JSON.stringify(arr)); return arr;
-    }
-    function recordReactionAndTime(){
-      const dt = Math.max(0, (performance.now() - (window._deckShownAt || performance.now()))) / 1000;
-      pushLimited('mtgb_rt_log_v1', Math.round(dt*10)/10, 20);
-      pushLimited('mtgb_dn_log_v1', {h:(new Date()).getHours()}, 60);
-      return dt;
-    }
-    function statsFromLogs(){
-      let rts=[], dnl=[];
-      try{ rts=JSON.parse(localStorage.getItem('mtgb_rt_log_v1')||'[]') }catch{}
-      try{ dnl=JSON.parse(localStorage.getItem('mtgb_dn_log_v1')||'[]') }catch{}
-      const avg = rts.length? (rts.reduce((a,b)=>a+b,0)/rts.length) : 999;
-      const day = dnl.filter(x=> x.h>=6 && x.h<18).length;
-      const night = dnl.filter(x=> (x.h>=18 || x.h<2)).length;
-      const total = day + night;
-      const dayDominant = total? (day/total) >= 0.55 : false;
-      const nightDominant = total? (night/total) >= 0.55 : false;
-      const balanced = !dayDominant && !nightDominant;
-      return { avg, dayDominant, nightDominant, balanced };
-    }
-    function isZorome(dtSec){ const t10 = Math.round(dtSec*10); const ones = Math.floor((t10/10)) % 10; const tenths = t10 % 10; return ones>=1 && ones<=9 && ones===tenths; }
-    function isZeroEnding(dtSec){ const nearInt = Math.abs(dtSec - Math.round(dtSec)) < 0.25; return nearInt && (Math.round(dtSec) % 10 === 0); }
-
-    // マナ付与ロジック
-    function tryAssignManaOnLevelUpVotes(prevVotes, newVotes, lastDt){
-      const prevMV = mvFromVotes(prevVotes);
-      const newMV  = mvFromVotes(newVotes);
-      if (newMV <= prevMV) return;
-
-      const { avg, dayDominant, nightDominant, balanced } = statsFromLogs();
-      let color = 'C';
-      if (isZorome(lastDt) || isZeroEnding(lastDt))      color = 'U';
-      else if (avg <= 40 && nightDominant)               color = 'R';
-      else if (avg >= 80 && dayDominant)                 color = 'G';
-      else if (dayDominant)                               color = 'W';
-      else if (nightDominant)                             color = 'B';
-      else if (balanced)                                  color = 'C';
-
-      const m = getMana();
-      if (!m[color]) { m[color] = 1; setMana(m); toast(`💠 マナ獲得: ${color}（Mana ${mvFromVotes(newVotes)}）`); }
-    }
-
-    async function postVoteOnce(bracket){
-      const res = await fetch(FN_VOTE, {
+/* ====== スキップ・次へ ====== */
+async function onSkip(){
+  try{
+    if (currentDeck) {
+      await fetch(FN_SKIP, {
         method: "POST",
-        headers: {"Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON},
-        body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, bracket })
+        headers: { "Content-Type":"application/json", "Authorization":"Bearer "+SUPABASE_ANON, "apikey": SUPABASE_ANON },
+        body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid })
       });
-      let ok = res.ok;
-      try { const j = await res.clone().json(); if (j && j.ok === false) ok = false; } catch(_){}
-      return { ok, status: res.status };
     }
-    async function postVoteWithRetry(bracket){
-      const retriable = new Set([429,409,500,502,503,504]);
-      for (let i=0;i<2;i++){ const { ok, status } = await postVoteOnce(bracket); if (ok) return true; if (!retriable.has(status)) return false; await new Promise(r=>setTimeout(r, 250)); }
-      return false;
-    }
+  }catch(_){}
+  clearInterval(autoNextTimer); autoNextTimer=null;
+  await loadRandomDeck();
+}
+$("#skipBtn").addEventListener("click", onSkip);
+nextBtn.addEventListener("click", ()=> { clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); });
 
-    document.querySelectorAll(".chip[data-vote]").forEach(el => el.addEventListener("click", async (e)=>{
-      if (!currentDeck || voting) return;
-      const bracket = Number(e.currentTarget.dataset.vote);
+/* ====== 検索 ====== */
+async function doSearch(){
+  const v=$("#searchInput").value.trim(); const url = canonUrl(v);
+  if(!url){ toast("URLまたは数字IDを入力してください。"); return; }
+  try{ const row = await ensureDeckExists(url); await showDeckByRow(row,{showResults:true}); } catch(e){ toast(String(e.message||e)); }
+}
+$("#searchBtn").addEventListener("click", doSearch);
+$("#searchInput").addEventListener("keydown", e=>{ if(e.key==="Enter") doSearch(); });
 
-      setVoting(true);
-      try{
-        const done = await postVoteWithRetry(bracket);
-        if (!done){ toast("保存エラーが発生しました。少し時間をおいてお試しください。"); return; }
+/* ====== 共有 ====== */
+function currentDeckLink(){
+  const id = currentDeck ? toDeckId(currentDeck.source_url) : null;
+  return id ? `${APP_URL}?deck=${id}` : APP_URL;
+}
+function shareCurrentDeck(){
+  const url = currentDeckLink();
+  const text = `このデッキのブラケットは？\n${url}\n#みんなでブラケット診断`;
+  const tw = new URL("https://x.com/intent/tweet"); tw.searchParams.set("text", text);
+  const w = window.open(tw.toString(), "_blank", "noopener,noreferrer");
+  if (!w) toast("ブラウザにポップアップをブロックされました。");
+}
+$("#shareBtn").addEventListener("click", shareCurrentDeck);
 
-        const lastDt = recordReactionAndTime();
-        lastRtHud.textContent = `${lastDt.toFixed(1)}s`;
-        lastRtHud.style.display='inline';
-
-        try { await sb.rpc('add_vote_time', { p_session: sid, p_deck: currentDeck.id, p_ms: Math.round(lastDt * 1000) }); } catch(_){}
-
-        const prevVotes = voteCount();
-        const already = hasVotedDeck(currentDeck.id);
-        if (!already) markVotedDeck(currentDeck.id); // 初回だけ +1
-        const newVotes = voteCount();
-
-        tryAssignManaOnLevelUpVotes(prevVotes, newVotes, lastDt);
-        renderHUD();
-
-        markMyVote(bracket);
-        resultsEl.style.display="flex";
-        await loadVotesAndRenderResults(true);
-        await loadDeckRtStat();
-
-        let left = 10;
-        autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-        clearInterval(autoNextTimer);
-        autoNextTimer = setInterval(()=>{
-          left--;
-          if(left<=0){ clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); }
-          else autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-        }, 1000);
-      }catch{ toast("保存エラーが発生しました。"); }
-      finally{ setVoting(false); }
-    }));
-
-    // スキップ（記録だけして次へ）
-    async function onSkip(){
-      try{ if (currentDeck) await sb.rpc('upsert_skip', { p_session: sid, p_deck: currentDeck.id }); }catch(_){}
-      clearInterval(autoNextTimer); autoNextTimer=null; await loadRandomDeck();
-    }
-    $("#skipBtn").addEventListener("click", onSkip);
-    nextBtn.addEventListener("click", ()=> { clearInterval(autoNextTimer); autoNextTimer=null; loadRandomDeck(); });
-
-    // ========= 検索 =========
-    async function ensureDeckExists(url){
-      const { data } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
-      if(data?.id) return data;
-      const res = await fetch(FN_INGEST,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ url, session_id:sid }) });
-      const j = await res.json().catch(()=> ({}));
-      if(res.ok && j.ok){
-        const { data: after } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
-        if(after?.id) return after;
-      }
-      throw new Error(j?.error || "登録に失敗しました");
-    }
-    async function doSearch(){
-      const v=$("#searchInput").value.trim(); const url = canonUrl(v);
-      if(!url){ toast("URLまたは数字IDを入力してください。"); return; }
-      try{ const row = await ensureDeckExists(url); await showDeckByRow(row,{showResults:true}); } catch(e){ toast(String(e.message||e)); }
-    }
-    $("#searchBtn").addEventListener("click", doSearch);
-    $("#searchInput").addEventListener("keydown", e=>{ if(e.key==="Enter") doSearch(); });
-
-    // ========= 共有 =========
-    function currentDeckLink(){ const id = currentDeck ? toDeckId(currentDeck.source_url) : null; return id ? `${APP_URL}?deck=${id}` : APP_URL; }
-    function shareCurrentDeck(){
-      const url = currentDeckLink();
-      const text = `このデッキのブラケットは？\n${url}\n#みんなでブラケット診断`;
-      const tw = new URL("https://x.com/intent/tweet"); tw.searchParams.set("text", text);
-      const w = window.open(tw.toString(), "_blank", "noopener,noreferrer"); if (!w) toast("ブラウザにポップアップをブロックされました。Xの投稿を許可してください。");
-    }
-    document.getElementById("shareBtn").addEventListener("click", shareCurrentDeck);
-
-    // ========= 削除希望（成功→少し待って次へ） =========
-    let reporting = false;
-    document.getElementById("reportBtn").addEventListener("click", async ()=>{
-      if(!currentDeck || reporting) return;
-      reporting = true;
-      try{
-        const res = await fetch(FN_REPORT,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, reason:"user_report_from_vote" }) });
-        const j = await res.json().catch(()=> ({}));
-        if(res.ok && j?.ok!==false){ toast("報告を受け付けました。ありがとうございました。"); clearInterval(autoNextTimer); autoNextTimer=null; setTimeout(()=>{ loadRandomDeck(); reporting=false; }, REPORT_NEXT_DELAY_MS); }
-        else { toast("報告に失敗しました。"); reporting=false; }
-      }catch{ toast("報告に失敗しました。"); reporting=false; }
+/* ====== 通報 ====== */
+$("#reportBtn").addEventListener("click", async ()=>{
+  if(!currentDeck) return toast("デッキが読み込まれていません");
+  const btn = $("#reportBtn"); const orig = btn.textContent;
+  btn.textContent="送信中…"; btn.classList.add("primary","ghost");
+  try{
+    const res = await fetch(FN_REPORT,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+      body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, reason:"user_report_from_vote" })
     });
+    const j = await res.json().catch(()=> ({}));
+    if(res.ok && j?.ok!==false){
+      btn.textContent="完了！"; toast("報告ありがとうございました");
+      setTimeout(()=>{ btn.textContent=orig; btn.classList.remove("primary","ghost"); onSkip(); }, 900);
+    }else{
+      btn.textContent=orig; btn.classList.remove("primary","ghost");
+      toast("報告に失敗しました");
+    }
+  }catch{
+    btn.textContent=orig; btn.classList.remove("primary","ghost");
+    toast("報告に失敗しました");
+  }
+});
 
-    // ========= シート =========
-    const sheet=$("#sheet"), backdrop=$("#backdrop");
-    function openSheet(){ sheet.style.display="flex"; backdrop.style.display="block"; }
-    function closeSheet(){ sheet.style.display="none"; backdrop.style.display="none"; }
-    $("#openSheet").addEventListener("click", openSheet);
-    $("#closeSheet").addEventListener("click", closeSheet);
-    backdrop.addEventListener("click", closeSheet);
+/* ====== シート ====== */
+const sheet=$("#sheet"), backdrop=$("#backdrop");
+function openSheet(){ sheet.style.display="flex"; backdrop.style.display="block"; }
+function closeSheet(){ sheet.style.display="none"; backdrop.style.display="none"; }
+$("#openSheet").addEventListener("click", openSheet);
+$("#closeSheet").addEventListener("click", closeSheet);
+backdrop.addEventListener("click", closeSheet);
 
-    // タブ
-    const tabs = document.querySelectorAll(".tab");
-    tabs.forEach(t=> t.addEventListener("click", ()=>{
-      tabs.forEach(x=>x.classList.remove("active")); t.classList.add("active");
-      const name=t.dataset.tab;
-      $("#pane-reg").style.display = name==="reg" ? "block":"none";
-      $("#pane-del").style.display = name==="del" ? "block":"none";
-      $("#pane-mine").style.display= name==="mine"? "block":"none";
-      if(name==="mine") loadMine();
-    }));
+/* ====== タブ ====== */
+const tabs = document.querySelectorAll(".tab");
+tabs.forEach(t=> t.addEventListener("click", ()=>{
+  tabs.forEach(x=>x.classList.remove("active")); t.classList.add("active");
+  const name=t.dataset.tab;
+  $("#pane-reg").style.display = name==="reg" ? "block":"none";
+  $("#pane-del").style.display = name==="del" ? "block":"none";
+  $("#pane-mine").style.display= name==="mine"? "block":"none";
+  if(name==="mine") loadMine();
+}));
 
-    // 登録（上限100）
-    $("#regBtn").addEventListener("click", async ()=>{
-      const msg=$("#regMsg"); msg.textContent="";
-      const v=$("#regUrl").value.trim(); const url=canonUrl(v); if(!url){ msg.textContent="URL形式が正しくありません。"; return; }
-      // 上限チェック
-      const { count } = await sb.from("decks").select("id", { count: "exact", head: true }).eq("created_by_session", sid);
-      if ((count ?? 0) >= 100){ msg.textContent="登録上限（100件）に達しています。"; return; }
-      msg.textContent="登録中...";
-      try{
-        const res = await fetch(FN_INGEST,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ url, session_id:sid }) });
-        const j = await res.json().catch(()=> ({}));
-        if(res.ok && j.ok){ msg.textContent = "登録しました。"; try{ const row = await ensureDeckExists(url); await showDeckByRow(row,{showResults:false}); }catch{} loadMine(); }
-        else{ msg.textContent = `登録失敗: ${j?.error || res.statusText}`; }
-      }catch{ msg.textContent="登録に失敗しました。時間をおいて再度お試しください。"; }
+/* ====== 登録 ====== */
+$("#regBtn").addEventListener("click", async ()=>{
+  const msg=$("#regMsg"); msg.textContent="";
+  const v=$("#regUrl").value.trim(); const url=canonUrl(v); if(!url){ msg.textContent="URL形式が正しくありません。"; return; }
+  msg.textContent="登録中...";
+  try{
+    const res = await fetch(FN_INGEST,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ url, session_id:sid }) });
+    const j = await res.json().catch(()=> ({}));
+    if(res.ok && j.ok){
+      msg.textContent = "登録しました。";
+      try{ const row = await ensureDeckExists(url); await showDeckByRow(row,{showResults:false}); }catch{}
+      loadMine();
+    }else{ msg.textContent = `登録失敗: ${j?.error || res.statusText}`; }
+  }catch{ msg.textContent="登録に失敗しました。"; }
+});
+
+/* ====== 通報タブ ====== */
+$("#delBtn").addEventListener("click", async ()=>{
+  const msg=$("#delMsg"); msg.textContent="";
+  const v=$("#delUrl").value.trim(); const url=canonUrl(v); if(!url){ msg.textContent="URL形式が正しくありません。"; return; }
+  const { data } = await sb.from("decks").select("id").eq("source_url", url).maybeSingle();
+  if(!data?.id){ msg.textContent="まだ登録されていない可能性があります。"; return; }
+  try{
+    const res = await fetch(FN_REPORT,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+      body: JSON.stringify({ deck_id: data.id, session_id: sid, reason:"user_delete_request" })
     });
+    const j = await res.json().catch(()=> ({}));
+    (res.ok && j?.ok!==false) ? (msg.textContent="報告を受け付けました。ありがとうございました。") : (msg.textContent=`報告に失敗しました: ${j?.error || res.statusText}`);
+  }catch{ msg.textContent="報告に失敗しました。"; }
+});
 
-    // 通報タブ
-    $("#delBtn").addEventListener("click", async ()=>{
-      const msg=$("#delMsg"); msg.textContent="";
-      const v=$("#delUrl").value.trim(); const url=canonUrl(v); if(!url){ msg.textContent="URL形式が正しくありません。"; return; }
-      const { data } = await sb.from("decks").select("id").eq("source_url", url).maybeSingle();
-      if(!data?.id){ msg.textContent="まだ登録されていない可能性があります。"; return; }
-      try{
-        const res = await fetch(FN_REPORT,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ deck_id: data.id, session_id: sid, reason:"user_delete_request" }) });
-        const j = await res.json().catch(()=> ({}));
-        (res.ok && j?.ok!==false) ? (msg.textContent="報告を受け付けました。ありがとうございました。") : (msg.textContent=`報告に失敗しました: ${j?.error || res.statusText}`);
-      }catch{ msg.textContent="報告に失敗しました。"; }
+/* ====== 自分の登録 ====== */
+$("#reloadMine").addEventListener("click", ()=> loadMine());
+async function loadMine(){
+  const listEl=$("#mineList");
+  listEl.innerHTML="読み込み中…";
+  const { data, error } = await sb.from("decks").select("id,source_url,deck_name,created_at").eq("created_by_session", sid).order("created_at",{ascending:false}).limit(50);
+  if(error){ listEl.textContent="読み込みエラー"; return; }
+  if(!data || data.length===0){ listEl.textContent="まだ登録がありません。"; return; }
+  listEl.innerHTML="";
+  for(const d of data){
+    const idNum = toDeckId(d.source_url) || d.id;
+    const item=document.createElement("div"); item.className="item";
+    const a=document.createElement("a"); a.href=d.source_url; a.target="_blank"; a.rel="noopener noreferrer";
+    a.textContent = idNum; // 1081165 だけ表示
+    const del=document.createElement("button"); del.className="small-btn"; del.textContent="削除";
+    del.addEventListener("click", ()=> deleteOwn(d.id, item));
+    const show=document.createElement("button"); show.className="small-btn"; show.textContent="表示";
+    show.addEventListener("click", async ()=> {
+      const row = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("id", d.id).maybeSingle();
+      if(row.data) await showDeckByRow(row.data,{showResults:false});
+      closeSheet();
     });
+    item.append(a, show, del);
+    listEl.appendChild(item);
+  }
+}
+async function deleteOwn(deck_id, node){
+  if(!confirm("この登録を削除しますか？（投票/通報も削除されます）")) return;
+  try{
+    const res = await fetch(FN_DELETE_OWN,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+      body: JSON.stringify({ deck_id, session_id: sid })
+    });
+    const j = await res.json().catch(()=> ({}));
+    if(res.ok && j?.ok){ toast("削除しました"); node?.remove(); if(currentDeck?.id===deck_id) loadRandomDeck(); }
+    else toast(`削除に失敗しました: ${j?.error || res.statusText}`);
+  }catch{ toast("削除に失敗しました。"); }
+}
 
-    // 自分の登録（数字だけ & ミニグラフ）
-    $("#reloadMine").addEventListener("click", ()=> loadMine());
-    async function loadMiniChart(deckId, container){
-      const { data, error } = await sb.from("labels").select("bracket").eq("deck_id", deckId).limit(5000);
-      if(error){ container.textContent="–"; return; }
-      let c=[0,0,0,0]; for(const r of (data||[])) if(r.bracket>=1 && r.bracket<=4) c[r.bracket-1]++;
-      const total=c.reduce((a,b)=>a+b,0) || 1;
-      const per=c.map(x=> Math.round(x/total*100));
-      const bar=document.createElement("div"); bar.className="miniBar";
-      const s1=document.createElement("div"), s2=document.createElement("div"), s3=document.createElement("div"), s4=document.createElement("div");
-      [s1,s2,s3,s4].forEach((s,i)=>{ s.className=`miniSeg b${i+1}`; bar.appendChild(s); });
-      s1.style.left="0%"; s1.style.width = per[0]+"%";
-      s2.style.left= per[0]+"%"; s2.style.width = per[1]+"%";
-      s3.style.left=(per[0]+per[1])+"%"; s3.style.width = per[2]+"%";
-      s4.style.left=(per[0]+per[1]+per[2])+"%"; s4.style.width = per[3]+"%";
-      const overlay=document.createElement("div"); overlay.className="miniOverlay"; overlay.textContent=`1:${per[0]}%  2:${per[1]}%  3:${per[2]}%  4:${per[3]}%`;
-      container.innerHTML=""; container.append(bar, overlay);
-      container.addEventListener('touchstart', ()=>{ overlay.style.display='block'; setTimeout(()=> overlay.style.display='none', 1200); }, {passive:true});
-    }
-    async function loadMine(){
-      const listEl=$("#mineList");
-      listEl.innerHTML="読み込み中…";
-      const { data, error } = await sb.from("decks").select("id,source_url,deck_name,created_at").eq("created_by_session", sid).order("created_at",{ascending:false}).limit(50);
-      if(error){ listEl.textContent="読み込みエラー"; return; }
-      if(!data || data.length===0){ listEl.textContent="まだ登録がありません。"; return; }
-      listEl.innerHTML="";
-      for(const d of data){
-        const id = toDeckId(d.source_url) || (d.source_url||"").split("/").pop();
-        const item=document.createElement("div"); item.className="item";
-        const a=document.createElement("a"); a.href=d.source_url; a.target="_blank"; a.rel="noopener noreferrer";
-        a.textContent = id || d.source_url; // ← 数字だけ
-        const mini=document.createElement("div"); mini.className="mini"; await loadMiniChart(d.id, mini);
-        const del=document.createElement("button"); del.className="small-btn"; del.textContent="削除";
-        del.addEventListener("click", ()=> deleteOwn(d.id, item));
-        const show=document.createElement("button"); show.className="small-btn"; show.textContent="表示";
-        show.addEventListener("click", async ()=> {
-          const row = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("id", d.id).maybeSingle();
-          if(row.data) await showDeckByRow(row.data,{showResults:false}); closeSheet();
-        });
-        item.append(a, mini, show, del); listEl.appendChild(item);
-      }
-    }
-    async function deleteOwn(deck_id, node){
-      if(!confirm("この登録を削除しますか？（投票/通報も削除されます）")) return;
-      try{
-        const res = await fetch(FN_DELETE_OWN,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ deck_id, session_id: sid }) });
-        const j = await res.json().catch(()=> ({}));
-        if(res.ok && j?.ok){ toast("削除しました"); node?.remove(); if(currentDeck?.id===deck_id) loadRandomDeck(); }
-        else toast(`削除に失敗しました: ${j?.error || res.statusText}`);
-      }catch{ toast("削除に失敗しました。"); }
-    }
-
-    // ======= 起動時 =======
-    const paramDeck = new URLSearchParams(location.search).get("deck");
-    if (paramDeck) {
-      const url = canonUrl(paramDeck);
-      if (url) {
-        try { const row = await ensureDeckExists(url); await showDeckByRow(row, { showResults: true }); }
-        catch { await loadRandomDeck(); }
-      } else { await loadRandomDeck(); }
-    } else { await loadRandomDeck(); }
-  </script>
+/* ====== 起動 ====== */
+updateXpUI();
+const paramDeck = new URLSearchParams(location.search).get("deck");
+if (paramDeck) {
+  const url = canonUrl(paramDeck);
+  if (url) {
+    try { const row = await ensureDeckExists(url); await showDeckByRow(row, { showResults: true }); }
+    catch { await loadRandomDeck(); }
+  } else { await loadRandomDeck(); }
+} else { await loadRandomDeck(); }
+</script>
 </body>
 </html>

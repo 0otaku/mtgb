@@ -5,22 +5,32 @@
 <title>管理 | みんなでブラケット診断</title>
 <meta name="robots" content="noindex, nofollow">
 <style>
-  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;padding:16px;background:#fff;color:#0f172a}
+  :root{
+    --border:#e5e7eb; --muted:#64748b; --fg:#0f172a; --ok:#16a34a; --warn:#f59e0b; --danger:#dc2626; --link:#2563eb;
+    --card-bg:#fff; --chip:#f3f4f6;
+  }
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial;padding:16px;background:#fff;color:var(--fg)}
   h2{margin:18px 0 8px}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  input,button,select{padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px}
+  input,button,select{padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px}
   button{cursor:pointer;background:#fff}
   .grid{display:grid;gap:10px}
-  .card{border:1px solid #e5e7eb;border-radius:12px;padding:12px}
-  .muted{color:#64748b;font-size:12px}
+  .card{border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--card-bg)}
+  .muted{color:var(--muted);font-size:12px}
   .btns{display:flex;gap:8px;flex-wrap:wrap}
   .danger{background:#dc2626;color:#fff;border-color:#dc2626}
   .warn{background:#f59e0b;color:#111827;border-color:#f59e0b}
   .ok{background:#16a34a;color:#fff;border-color:#16a34a}
-  .link{color:#2563eb;text-decoration:none}
-  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .link{color:var(--link);text-decoration:none}
+  .link:hover{text-decoration:underline}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
   .section{margin-top:16px}
-  .scroll-panel{max-height:70vh;overflow:auto;border:1px solid #e5e7eb;border-radius:12px;padding:8px;background:#fff}
+  .table{width:100%;border-collapse:collapse}
+  .table th,.table td{border-bottom:1px solid var(--border);padding:8px 6px;font-size:14px;text-align:left;vertical-align:top}
+  .table th{white-space:nowrap}
+  .scroll{max-height:540px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:8px}
+  .sort-btn{border:1px dashed var(--border);padding:2px 8px;border-radius:999px;font-size:12px;background:#fff;cursor:pointer}
+  .err{color:#dc2626}
 </style>
 <body>
   <div class="row">
@@ -28,17 +38,6 @@
     <label>Admin Token: <input id="token" placeholder="保存されます" style="min-width:260px"></label>
   </div>
 
-  <!-- ▼ 全体反応速度 -->
-  <div class="section">
-    <h2>全体反応速度</h2>
-    <div class="row">
-      <label>過去 <input id="days_stats" type="number" value="7" style="width:90px"></label> 日
-      <button id="btn_stats">取得</button>
-    </div>
-    <div id="stats_out" class="card" style="margin-top:8px">—</div>
-  </div>
-
-  <!-- ▼ 設定 -->
   <div class="section">
     <h2>設定</h2>
     <div class="row">
@@ -49,7 +48,6 @@
     <div class="muted">※ この件数以上の通報で該当デッキを自動削除します</div>
   </div>
 
-  <!-- ▼ デッキ一覧（デッキ別 反応速度の期間指定付き） -->
   <div class="section">
     <h2>デッキ一覧</h2>
     <div class="row">
@@ -60,14 +58,9 @@
       <label>Offset <input id="doffset" type="number" value="0" style="width:90px"></label>
       <button id="dload">読み込み</button>
     </div>
-    <div class="row" style="margin-top:6px">
-      <label>反応速度：過去 <input id="spd_days" type="number" value="14" style="width:90px"></label> 日
-      <button id="spd_reload">速度を更新</button>
-    </div>
-    <div id="dlist" class="grid scroll-panel"></div>
+    <div id="dlist" class="grid"></div>
   </div>
 
-  <!-- ▼ 通報一覧 -->
   <div class="section">
     <h2>通報一覧</h2>
     <div class="row">
@@ -78,10 +71,9 @@
       <label>To <input id="to" type="date"></label>
       <button id="load">読み込み</button>
     </div>
-    <div id="list" class="grid scroll-panel"></div>
+    <div id="list" class="grid"></div>
   </div>
 
-  <!-- ▼ 通報者上位 -->
   <div class="section">
     <h2>通報者（上位）</h2>
     <div class="row">
@@ -89,10 +81,9 @@
       <label>件数 <input id="limit_rep" type="number" value="100" style="width:90px"></label>
       <button id="loadRep">読み込み</button>
     </div>
-    <div id="reporters" class="grid scroll-panel"></div>
+    <div id="reporters" class="grid"></div>
   </div>
 
-  <!-- ▼ 登録者上位 -->
   <div class="section">
     <h2>登録者（上位）</h2>
     <div class="row">
@@ -100,24 +91,99 @@
       <label>件数 <input id="limit_reg" type="number" value="100" style="width:90px"></label>
       <button id="loadReg">読み込み</button>
     </div>
-    <div id="registrants" class="grid scroll-panel"></div>
+    <div id="registrants" class="grid"></div>
   </div>
 
-  <!-- ▼ ブロック一覧 -->
   <div class="section">
     <h2>ブロック一覧</h2>
     <div class="row"><button id="loadBL">更新</button></div>
-    <div class="grid scroll-panel" id="blocklist"></div>
+    <div class="grid" id="blocklist"></div>
+  </div>
+
+  <div class="section">
+    <h2>アナリティクス</h2>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <b>反応速度（過去 n 日 / 管理専用）</b>
+        <div class="row">
+          <label>過去 <input id="rtDays" type="number" value="7" style="width:90px"></label> 日間
+          <button id="loadRt" class="right">読み込み</button>
+        </div>
+      </div>
+      <div id="rtBox" class="muted">読み込み待ち…</div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <b>アクセス数（impressions）</b>
+        <div class="row">
+          <label>過去 <input id="impDays" type="number" value="7" style="width:90px"></label> 日間</label>
+          <label>粒度
+            <select id="impGroup">
+              <option value="hour">時間</option>
+              <option value="day">日</option>
+            </select>
+          </label>
+          <button id="loadImp">読み込み</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>時刻/日付 <button class="sort-btn" data-sort="time">並べ替え</button></th>
+              <th>件数 <button class="sort-btn" data-sort="count">並べ替え</button></th>
+            </tr>
+          </thead>
+          <tbody id="impTbody"><tr><td colspan="2" class="muted">読み込み待ち…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="impErr" class="err"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <b>デッキ別・投票数</b>
+        <div class="row">
+          <label>検索 <input id="vq" placeholder="URL/名前/ID"></label>
+          <label>From <input id="vfrom" type="date"></label>
+          <label>To <input id="vto" type="date"></label>
+          <label>並び
+            <select id="vsort">
+              <option value="votes_desc">投票 多い→少</option>
+              <option value="votes_asc">投票 少→多</option>
+              <option value="last_desc">最終投票 新→旧</option>
+              <option value="last_asc">最終投票 旧→新</option>
+            </select>
+          </label>
+          <label>件数 <input id="vlimit" type="number" value="100" style="width:90px"></label>
+          <button id="loadVotes">読み込み</button>
+        </div>
+      </div>
+      <div class="scroll">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>デッキ</th>
+              <th>投票数</th>
+              <th>最終投票</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="votesTbody"><tr><td colspan="4" class="muted">読み込み待ち…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="votesErr" class="err"></div>
+    </div>
   </div>
 
 <script>
-/* ==== 設定 ==== */
 const FN = "https://onzljxnqlrohkzsfxqbh.supabase.co/functions/v1/admin2";
 const $ = (id)=>document.getElementById(id);
 $("token").value = localStorage.getItem("admin_token") || "";
 $("token").addEventListener('change',()=>localStorage.setItem("admin_token",$("token").value));
 
-/* ==== ボタン紐付け ==== */
 $("loadSet").onclick = loadSettings;
 $("saveSet").onclick = saveSettings;
 $("dload").onclick = loadDecks;
@@ -126,41 +192,35 @@ $("loadRep").onclick = loadReporters;
 $("loadReg").onclick = loadRegistrants;
 $("loadBL").onclick = loadBlocklist;
 
-/* ==== 共通 API ヘルパ ==== */
+$("loadRt").onclick = loadRtGlobal;
+$("loadImp").onclick = loadImpressions;
+$("loadVotes").onclick = loadVotesByDeck;
+
 async function api(pathOrQuery, opts={}){
   const token=$("token").value.trim(); if(!token){ alert("Admin Tokenを入力してください"); throw new Error('no token'); }
   const url = pathOrQuery.startsWith("http") ? pathOrQuery : `${FN}${pathOrQuery}`;
   const r = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), "x-admin-token": token } });
-  if(!r.ok){
-    const t = await r.text().catch(()=> "");
-    throw new Error(t || `HTTP ${r.status}`);
-  }
+  if(!r.ok){ const t = await r.text().catch(()=> ""); throw new Error(t || `HTTP ${r.status}`); }
   return r.json();
 }
 
-/* ==== 設定（取得・保存） ==== */
+/* 設定 */
 async function loadSettings(){
   try{
     const j = await api("?view=settings", { method:"GET" });
     $("th").value = j?.data?.report_delete_threshold?.value ?? 5;
-  }catch(e){
-    alert("設定の読み込みに失敗: " + (e?.message||e));
-  }
+  }catch(e){ alert("設定の読み込みに失敗: " + (e?.message||e)); }
 }
 async function saveSettings(){
   const v = Number($("th").value || "5");
   if (!Number.isFinite(v) || v<1) return alert("1以上の数値を入力してください");
   try{
-    await api("", { method:"POST", headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ action:"set_settings", report_delete_threshold: v })
-    });
+    await api("", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ action:"set_settings", report_delete_threshold: v }) });
     alert("保存しました");
-  }catch(e){
-    alert("保存に失敗: " + (e?.message||e));
-  }
+  }catch(e){ alert("保存に失敗: " + (e?.message||e)); }
 }
 
-/* ==== デッキ一覧 ==== */
+/* デッキ一覧 */
 async function loadDecks(){
   const q = $("dq").value.trim();
   const limit = $("dlimit").value || "50";
@@ -168,7 +228,6 @@ async function loadDecks(){
   const to   = $("dto").value;
   const offset = $("doffset").value || "0";
   const query = `?view=decks&limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}${from?`&from=${from}`:''}${to?`&to=${to}`:''}${q?`&q=${encodeURIComponent(q)}`:''}`;
-
   try{
     const j = await api(query, { method:"GET" });
     const L = $("dlist");
@@ -176,192 +235,197 @@ async function loadDecks(){
     L.innerHTML = (j.data||[]).map(x=>`
       <div class="card">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-          <div style="min-width:0">
+          <div>
             <div><b>${x.deck_name || '(名称なし)'}</b></div>
             <div class="muted">登録: ${fmt(x.created_at)} / 公開日: ${x.registered_at||'—'} / 通報: ${x.report_count||0}件</div>
             <div class="muted">votes: [1:${x.votes?.b1||0}] [2:${x.votes?.b2||0}] [3:${x.votes?.b3||0}] [4:${x.votes?.b4||0}]</div>
             <div><a class="link mono" href="${x.source_url}" target="_blank" rel="noopener">${x.source_url}</a></div>
             <div class="muted">IP: <span class="mono">${x.created_by_ip||'-'}</span> / SID: <span class="mono">${x.created_by_session||'-'}</span></div>
-            <div class="muted" data-deck-id="${x.id}">速度: 読み込み中…</div>
           </div>
           <div class="btns">
-            <button class="danger" onclick="delDeck('${x.id}','decks')" title="ラベル/通報も削除">削除</button>
+            <button class="danger" onclick="delDeck('${x.id}')" title="ラベル/通報も削除">削除</button>
           </div>
         </div>
       </div>
     `).join('') || '<div class="muted">該当なし</div>';
-
-    // デッキ別 速度を更新
-    if (window.__reloadSpeeds) window.__reloadSpeeds();
-  }catch(e){
-    alert("読み込みに失敗しました: " + (e?.message||e));
-  }
+  }catch(e){ alert("読み込みに失敗しました: " + (e?.message||e)); }
 }
 
-/* ==== 通報一覧 ==== */
+/* 通報一覧 */
 async function loadReports(){
-  const q = $("q").value.trim();
-  const min = $("min").value || "1";
-  const limit = $("limit").value || "50";
-  const from = $("from").value;
-  const to   = $("to").value;
-  const query = `?view=reports&min=${encodeURIComponent(min)}&limit=${encodeURIComponent(limit)}${from?`&from=${from}`:''}${to?`&to=${to}`:''}${q?`&q=${encodeURIComponent(q)}`:''}`;
-  const j = await api(query, { method: "GET" });
-  const list = $("list");
-  const fmt = (d)=>new Date(d).toLocaleString();
-  list.innerHTML = (j.data||[]).map(x=>`
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-        <div>
-          <div><b>${x.deck_name || '(名称なし)'}</b></div>
-          <div class="muted">通報: ${x.report_count}件 / 最終: ${fmt(x.latest_reported_at)} / 登録日: ${x.registered_at||'—'}</div>
-          <div><a class="link mono" href="${x.deck_source_url}" target="_blank" rel="noopener">${x.deck_source_url}</a></div>
-        </div>
-        <div class="btns">
-          <button class="warn" onclick="clearReports('${x.deck_id}')">通報クリア</button>
-          <button class="danger" onclick="delDeck('${x.deck_id}','reports')" title="ラベルも含め削除されます">削除</button>
+  try{
+    const q = $("q").value.trim();
+    const min = $("min").value || "1";
+    const limit = $("limit").value || "50";
+    const from = $("from").value;
+    const to   = $("to").value;
+    const query = `?view=reports&min=${encodeURIComponent(min)}&limit=${encodeURIComponent(limit)}${from?`&from=${from}`:''}${to?`&to=${to}`:''}${q?`&q=${encodeURIComponent(q)}`:''}`;
+    const j = await api(query, { method: "GET" });
+    const list = $("list");
+    const fmt = (d)=>new Date(d).toLocaleString();
+    list.innerHTML = (j.data||[]).map(x=>`
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <div>
+            <div><b>${x.deck_name || '(名称なし)'}</b></div>
+            <div class="muted">通報: ${x.report_count}件 / 最終: ${fmt(x.latest_reported_at)} / 登録日: ${x.registered_at||'—'}</div>
+            <div><a class="link mono" href="${x.deck_source_url}" target="_blank" rel="noopener">${x.deck_source_url}</a></div>
+          </div>
+          <div class="btns">
+            <button class="warn" onclick="clearReports('${x.deck_id}')">通報クリア</button>
+            <button class="danger" onclick="delDeck('${x.deck_id}')" title="ラベルも含め削除されます">削除</button>
+          </div>
         </div>
       </div>
-    </div>
-  `).join('') || '<div class="muted">該当なし</div>';
+    `).join('') || '<div class="muted">該当なし</div>';
+  }catch(e){ alert("読み込みに失敗しました: " + (e?.message||e)); }
 }
 
-/* ==== 削除・通報クリア ==== */
+/* 共通POST */
 async function apiPost(payload){ return api("", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) }); }
-async function delDeck(id, origin){
-  if(!confirm("このデッキを削除しますか？（投票・通報も消えます）")) return;
-  await apiPost({ action:"delete_deck", deck_id:id });
-  if (origin === 'decks') loadDecks();
-  else if (origin === 'reports') loadReports();
-  else { loadDecks(); loadReports(); }
-}
-async function clearReports(id){
-  if(!confirm("このデッキの通報を全て削除しますか？")) return;
-  await apiPost({ action:"clear_reports", deck_id:id });
-  loadReports();
-}
+async function delDeck(id){ if(!confirm("このデッキを削除しますか？（投票・通報も消えます）")) return; await apiPost({ action:"delete_deck", deck_id:id }); loadDecks(); loadReports(); }
+async function clearReports(id){ if(!confirm("このデッキの通報を全て削除しますか？")) return; await apiPost({ action:"clear_reports", deck_id:id }); loadReports(); }
 
-/* ==== 通報者（上位） ==== */
+/* 上位 */
 async function loadReporters(){
-  const limit = $("limit_rep").value || "100";
-  const days = $("days").value || "7";
-  const j = await api(`?view=reporters&limit=${encodeURIComponent(limit)}&days=${encodeURIComponent(days)}`, { method:"GET" });
-  const L = $("reporters");
-  const fmt = (d)=>new Date(d).toLocaleString();
-  L.innerHTML = (j.data||[]).map(r=>`
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-        <div>
-          <div>IP: <span class="mono">${r.ip || '-'}</span> / Session: <span class="mono">${r.session_id || '-'}</span></div>
-          <div class="muted">通報: ${r.count}件 / 最終: ${fmt(r.last)}</div>
-        </div>
-        <div class="btns">
-          ${r.ip ? (r.blocked_ip ? `<button class="ok" onclick="unblockIp('${r.ip}')">IP解除</button>` : `<button class="danger" onclick="blockIp('${r.ip}')">IPブロック</button>`) : ''}
-          ${r.session_id ? (r.blocked_session ? `<button class="ok" onclick="unblockSession('${r.session_id}')">セッション解除</button>` : `<button class="danger" onclick="blockSession('${r.session_id}')">セッションブロック</button>`) : ''}
+  try{
+    const limit = $("limit_rep").value || "100";
+    const days = $("days").value || "7";
+    const j = await api(`?view=reporters&limit=${encodeURIComponent(limit)}&days=${encodeURIComponent(days)}`, { method:"GET" });
+    const L = $("reporters");
+    const fmt = (d)=>new Date(d).toLocaleString();
+    L.innerHTML = (j.data||[]).map(r=>`
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <div>
+            <div>IP: <span class="mono">${r.ip || '-'}</span> / Session: <span class="mono">${r.session_id || '-'}</span></div>
+            <div class="muted">通報: ${r.count}件 / 最終: ${fmt(r.last)}</div>
+          </div>
+          <div class="btns">
+            ${r.ip ? (r.blocked_ip ? `<button class="ok" onclick="unblockIp('${r.ip}')">IP解除</button>` : `<button class="danger" onclick="blockIp('${r.ip}')">IPブロック</button>`) : ''}
+            ${r.session_id ? (r.blocked_session ? `<button class="ok" onclick="unblockSession('${r.session_id}')">セッション解除</button>` : `<button class="danger" onclick="blockSession('${r.session_id}')">セッションブロック</button>`) : ''}
+          </div>
         </div>
       </div>
-    </div>
-  `).join('') || '<div class="muted">該当なし</div>';
+    `).join('') || '<div class="muted">該当なし</div>';
+  }catch(e){ alert("読み込みに失敗: " + (e?.message||e)); }
 }
-
-/* ==== 登録者（上位） ==== */
 async function loadRegistrants(){
-  const limit = $("limit_reg").value || "100";
-  const days = $("days_reg").value || "7";
-  const j = await api(`?view=registrants&limit=${encodeURIComponent(limit)}&days=${encodeURIComponent(days)}`, { method:"GET" });
-  const L = $("registrants");
-  const fmt = (d)=>new Date(d).toLocaleString();
-  L.innerHTML = (j.data||[]).map(r=>`
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-        <div>
-          <div>IP: <span class="mono">${r.ip || '-'}</span> / Session: <span class="mono">${r.session_id || '-'}</span></div>
-          <div class="muted">登録: ${r.count}件 / 最終: ${fmt(r.last)}</div>
-        </div>
-        <div class="btns">
-          ${r.ip ? (r.blocked_ip ? `<button class="ok" onclick="unblockIp('${r.ip}')">IP解除</button>` : `<button class="danger" onclick="blockIp('${r.ip}')">IPブロック</button>`) : ''}
-          ${r.session_id ? (r.blocked_session ? `<button class="ok" onclick="unblockSession('${r.session_id}')">セッション解除</button>` : `<button class="danger" onclick="blockSession('${r.session_id}')">セッションブロック</button>`) : ''}
+  try{
+    const limit = $("limit_reg").value || "100";
+    const days = $("days_reg").value || "7";
+    const j = await api(`?view=registrants&limit=${encodeURIComponent(limit)}&days=${encodeURIComponent(days)}`, { method:"GET" });
+    const L = $("registrants");
+    const fmt = (d)=>new Date(d).toLocaleString();
+    L.innerHTML = (j.data||[]).map(r=>`
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <div>
+            <div>IP: <span class="mono">${r.ip || '-'}</span> / Session: <span class="mono">${r.session_id || '-'}</span></div>
+            <div class="muted">登録: ${r.count}件 / 最終: ${fmt(r.last)}</div>
+          </div>
+          <div class="btns">
+            ${r.ip ? (r.blocked_ip ? `<button class="ok" onclick="unblockIp('${r.ip}')">IP解除</button>` : `<button class="danger" onclick="blockIp('${r.ip}')">IPブロック</button>`) : ''}
+            ${r.session_id ? (r.blocked_session ? `<button class="ok" onclick="unblockSession('${r.session_id}')">セッション解除</button>` : `<button class="danger" onclick="blockSession('${r.session_id}')">セッションブロック</button>`) : ''}
+          </div>
         </div>
       </div>
-    </div>
-  `).join('') || '<div class="muted">該当なし</div>';
+    `).join('') || '<div class="muted">該当なし</div>';
+  }catch(e){ alert("読み込みに失敗: " + (e?.message||e)); }
 }
 
-/* ==== ブロック一覧 ==== */
+/* ブロック一覧 */
 async function blockIp(ip){ await apiPost({ action:"block_ip", ip }); loadReporters(); loadRegistrants(); loadBlocklist(); }
 async function unblockIp(ip){ await apiPost({ action:"unblock_ip", ip }); loadReporters(); loadRegistrants(); loadBlocklist(); }
 async function blockSession(session_id){ await apiPost({ action:"block_session", session_id }); loadReporters(); loadRegistrants(); loadBlocklist(); }
 async function unblockSession(session_id){ await apiPost({ action:"unblock_session", session_id }); loadReporters(); loadRegistrants(); loadBlocklist(); }
-
 async function loadBlocklist(){
-  const j = await api(`?view=blocklist`, { method:"GET" });
-  const B = $("blocklist");
-  B.innerHTML = `
-    <div class="card">
-      <div><b>IP</b></div>
-      ${(j.ips||[]).map(x=>`
-        <div class="row" style="justify-content:space-between">
-          <span class="mono">${x.ip}</span>
-          <div class="btns"><button class="ok" onclick="unblockIp('${x.ip}')">解除</button></div>
-        </div>
-      `).join('') || '<div class="muted">なし</div>'}
-    </div>
-    <div class="card">
-      <div><b>セッション</b></div>
-      ${(j.sessions||[]).map(x=>`
-        <div class="row" style="justify-content:space-between">
-          <span class="mono">${x.session_id}</span>
-          <div class="btns"><button class="ok" onclick="unblockSession('${x.session_id}')">解除</button></div>
-        </div>
-      `).join('') || '<div class="muted">なし</div>'}
-    </div>
-  `;
+  try{
+    const j = await api(`?view=blocklist`, { method:"GET" });
+    const B = $("blocklist");
+    B.innerHTML = `
+      <div class="card">
+        <div><b>IP</b></div>
+        ${(j.ips||[]).map(x=>`
+          <div class="row" style="justify-content:space-between">
+            <span class="mono">${x.ip}</span>
+            <div class="btns"><button class="ok" onclick="unblockIp('${x.ip}')">解除</button></div>
+          </div>
+        `).join('') || '<div class="muted">なし</div>'}
+      </div>
+      <div class="card">
+        <div><b>セッション</b></div>
+        ${(j.sessions||[]).map(x=>`
+          <div class="row" style="justify-content:space-between">
+            <span class="mono">${x.session_id}</span>
+            <div class="btns"><button class="ok" onclick="unblockSession('${x.session_id}')">解除</button></div>
+          </div>
+        `).join('') || '<div class="muted">なし</div>'}
+    `;
+  }catch(e){ alert("ブロック一覧の読み込みに失敗: " + (e?.message||e)); }
 }
 
-/* 初期：設定 & 全体速度 */
+/* アナリティクス */
+let IMP_ROWS=[];
+function renderImpressions(){
+  const tb = $("impTbody");
+  if(!IMP_ROWS.length){ tb.innerHTML = `<tr><td colspan="2" class="muted">データなし</td></tr>`; return; }
+  tb.innerHTML = IMP_ROWS.map(r=>`<tr><td class="mono">${r.key}</td><td>${r.count}</td></tr>`).join('');
+}
+function sortImpressions(by){ if(by==="count"){ IMP_ROWS.sort((a,b)=> b.count-a.count); } else { IMP_ROWS.sort((a,b)=> a.key.localeCompare(b.key)); } renderImpressions(); }
+document.addEventListener("click",(e)=>{ const btn=e.target.closest(".sort-btn"); if(!btn) return; if(btn.dataset.sort==="time") sortImpressions("time"); if(btn.dataset.sort==="count") sortImpressions("count"); });
+
+async function loadImpressions(){
+  const days = $("impDays").value || "7";
+  const group = $("impGroup").value || "day";
+  $("impErr").textContent=""; $("impTbody").innerHTML = `<tr><td colspan="2" class="muted">読み込み中…</td></tr>`;
+  try{
+    const j = await api(`?view=impressions&days=${encodeURIComponent(days)}&group=${encodeURIComponent(group)}`, { method:"GET" });
+    const rows = j?.data || [];
+    IMP_ROWS = rows.map(x=> ({ key: x.key || x.ts || x.bucket || '-', count: Number(x.count||0)}));
+    sortImpressions("time");
+  }catch(e){
+    $("impErr").innerHTML = `<span class="err">未対応またはエラー：${(e?.message||e).slice(0,140)}</span>
+      <div class="muted">※ Edge Function admin2 に <code>?view=impressions</code> の実装が必要です</div>`;
+    $("impTbody").innerHTML = `<tr><td colspan="2" class="muted">—</td></tr>`;
+  }
+}
+async function loadRtGlobal(){
+  const days = $("rtDays").value || "7";
+  const box = $("rtBox");
+  box.textContent = "読み込み中…";
+  try{
+    const j = await api(`?view=rt_global&days=${encodeURIComponent(days)}`, { method:"GET" });
+    const avg = j?.avg_sec ?? 0, p50 = j?.p50_sec ?? 0, n = j?.count ?? 0;
+    box.textContent = n ? `平均 ${avg.toFixed(1)}s / 中央 ${p50.toFixed(1)}s（件数: ${n}、過去${days}日）` : `データなし（過去${days}日）`;
+  }catch(e){
+    box.innerHTML = `<span class="err">未対応またはエラー：${(e?.message||e).slice(0,140)}</span>
+      <div class="muted">※ Edge Function admin2 に <code>?view=rt_global</code> の実装が必要です</div>`;
+  }
+}
+async function loadVotesByDeck(){
+  $("votesErr").textContent=""; $("votesTbody").innerHTML = `<tr><td colspan="4" class="muted">読み込み中…</td></tr>`;
+  const q=$("vq").value.trim(), from=$("vfrom").value, to=$("vto").value, sort=$("vsort").value||"votes_desc", limit=$("vlimit").value||"100";
+  try{
+    const j = await api(`?view=votes&limit=${encodeURIComponent(limit)}${from?`&from=${from}`:''}${to?`&to=${to}`:''}${q?`&q=${encodeURIComponent(q)}`:''}&sort=${encodeURIComponent(sort)}`, { method:"GET" });
+    const rows = j?.data || []; const fmt = (d)=> d ? new Date(d).toLocaleString() : "—";
+    $("votesTbody").innerHTML = rows.map(r=>`
+      <tr>
+        <td><div><b>${r.deck_name || '(名称なし)'}</b></div><div><a class="link mono" href="${r.deck_source_url}" target="_blank" rel="noopener">${r.deck_source_url}</a></div></td>
+        <td>${r.votes_total ?? 0}</td>
+        <td>${fmt(r.last_voted_at)}</td>
+        <td><div class="btns"><button class="warn" onclick="clearReports('${r.deck_id}')">通報クリア</button><button class="danger" onclick="delDeck('${r.deck_id}')">削除</button></div></td>
+      </tr>
+    `).join('') || `<tr><td colspan="4" class="muted">該当なし</td></tr>`;
+  }catch(e){
+    $("votesErr").innerHTML = `<span class="err">未対応またはエラー：${(e?.message||e).slice(0,140)}</span>
+      <div class="muted">※ Edge Function admin2 に <code>?view=votes</code> の実装が必要です</div>`;
+    $("votesTbody").innerHTML = `<tr><td colspan="4" class="muted">—</td></tr>`;
+  }
+}
+
+/* 初期 */
 loadSettings();
-</script>
-
-<!-- Supabaseで統計RPCを叩く（type=module 別スクリプト） -->
-<script type="module">
-  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-  const SUPABASE_URL  = "https://onzljxnqlrohkzsfxqbh.supabase.co";
-  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemxqeG5xbHJvaGt6c2Z4cWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NzUzNTksImV4cCI6MjA3MTE1MTM1OX0.eLAP_-PtVm6tBFFCNfOVsTqEcvtZK3x3QFFNeRpxuj8";
-  const sb = createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession:false, autoRefreshToken:false } });
-
-  async function loadStats(){
-    const days = Number(document.getElementById('days_stats').value || 7);
-    const out = document.getElementById('stats_out');
-    const { data, error } = await sb.rpc('vote_time_stats', { p_days: days });
-    if (error) { out.textContent = '取得エラー'; return; }
-    const row = Array.isArray(data) ? (data[0] || {}) : (data || {});
-    const a = Number(row.avg_sec ?? 0).toFixed(2);
-    const m = Number(row.median_sec ?? 0).toFixed(2);
-    const c = Number(row.cnt ?? 0);
-    out.textContent = `平均 ${a}s / 中央 ${m}s（件数: ${c}、過去${days}日）`;
-  }
-  document.getElementById('btn_stats').addEventListener('click', loadStats);
-  loadStats();
-
-  async function reloadSpeeds(){
-    const days = Number(document.getElementById('spd_days')?.value || 14);
-    const nodes = document.querySelectorAll('[data-deck-id]');
-    for (const el of nodes){
-      const id = el.getAttribute('data-deck-id');
-      try{
-        const { data, error } = await sb.rpc('vote_time_stats_deck', { p_deck: id, p_days: days });
-        if (error) { el.textContent = '速度: 取得エラー'; continue; }
-        const row = Array.isArray(data) ? (data[0] || {}) : (data || {});
-        const a = Number(row.avg_sec ?? 0).toFixed(2);
-        const m = Number(row.median_sec ?? 0).toFixed(2);
-        const c = Number(row.cnt ?? 0);
-        el.textContent = `速度: 平均 ${a}s / 中央 ${m}s（${c}件・過去${days}日）`;
-      }catch{ el.textContent = '速度: 取得エラー'; }
-    }
-  }
-  document.getElementById('spd_reload').addEventListener('click', reloadSpeeds);
-  // デッキ読込後に呼ばれる
-  window.__reloadSpeeds = reloadSpeeds;
 </script>
 </body>
 </html>
