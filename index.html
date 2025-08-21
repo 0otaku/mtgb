@@ -129,6 +129,22 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
 .sym.G{background:#ecfdf5;border-color:#bbf7d0}
 .sym.C{background:#f3f4f6;border-color:#e5e7eb}
 .rt{font-size:12px;color:#9ca3af;margin-left:6px}
+
+/* ▼ Xボタン（黒地・白字）とアイコン（公式SVGをimgで表示） */
+.btn-icon{display:inline-flex;align-items:center;gap:6px}
+.btn-icon svg,
+.btn-icon img{width:14px;height:14px;display:block}
+
+.btn-x{
+  background:#000 !important;
+  border-color:#000 !important;
+  color:#fff !important;
+}
+.btn-x:hover{ background:#111 !important }
+
+/* 削除希望は薄色をやめて通常色に */
+#reportBtn{ color:#111 !important; opacity:1 !important }
+
 </style>
 </head>
 <body>
@@ -200,10 +216,16 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:14px 16px; border:1p
       </div>
 
       <!-- 常時表示の操作ボタン -->
-      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-        <button id="shareBtn" class="small-btn">Xでシェア</button>
-        <button id="reportBtn" class="small-btn subtle">削除希望</button>
-      </div>
+<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+  <!-- 公式の X アイコン（Simple Icons CDN）を白で表示 -->
+  <button id="shareBtn" class="small-btn btn-icon btn-x" aria-label="Xでシェア">
+    <img src="https://cdn.simpleicons.org/x/FFFFFF" alt="" loading="lazy" decoding="async">
+    Xでシェア
+  </button>
+
+  <!-- 削除希望は通常の文字色（薄色クラスは使わない） -->
+  <button id="reportBtn" class="small-btn">削除希望</button>
+</div>
 
       <!-- Mana/XP（控えめ） -->
       <div class="mana-wrap">
