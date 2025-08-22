@@ -101,6 +101,12 @@ iframe{width:100%;height:70vh;min-height:520px;border:0;display:block;background
   100%{box-shadow:0 0 0 0 rgba(99,102,241,0)}
 }
 
+/* 動きが苦手な人への配慮 */
+@media (prefers-reduced-motion: reduce){
+  #nextBtn.pulse{ animation:none }
+  .chip{ transition:none }
+}
+
 .xbtn{display:inline-flex;align-items:center;gap:6px;font-weight:700;background:#000;color:#fff;border:1px solid #000;border-radius:999px;padding:7px 12px}
 .xbtn svg{width:14px;height:14px}
 
@@ -154,14 +160,23 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 
 /* 自分の登録 用ミニグラフ */
 .mini-wrap{flex:1; display:flex; align-items:center; gap:8px}
-.mini-bar{position:relative; height:10px; width:100%;
-  background:#f3f4f6; border:1px solid #e5e7eb; border-radius:6px; overflow:hidden}
+
+.mini-bar{
+  position:relative; height:18px; width:100%;
+  background:#f3f4f6; border:1px solid #e5e7eb; border-radius:4px; /* ← 8px → 4px */
+  overflow:hidden;
+}
 .mini-seg{position:absolute; top:0; bottom:0}
 .mini-seg.b1{background:var(--c1)} .mini-seg.b2{background:var(--c2)}
 .mini-seg.b3{background:var(--c3)} .mini-seg.b4{background:var(--c4)}
-.mini-overlay{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  font-size:11px; color:#111; background:rgba(255,255,255,.82); opacity:0; transition:opacity .15s}
+
+.mini-overlay{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:12px; line-height:1; padding:0 6px;
+  color:#111; background:rgba(255,255,255,.86); opacity:0; transition:opacity .15s;
+}
 .mini-bar:hover .mini-overlay{opacity:1}
+
 
 </style>
 </head>
@@ -201,10 +216,10 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
       <div class="vote-block">
         <div class="prompt">このデッキのブラケットは？</div>
         <div class="vote-row">
-          <button class="chip b1" data-vote="1">１</button>
-          <button class="chip b2" data-vote="2">２</button>
-          <button class="chip b3" data-vote="3">３</button>
-          <button class="chip b4" data-vote="4">４</button>
+          <button class="chip b1" data-vote="1" aria-pressed="false">１</button>
+          <button class="chip b2" data-vote="2" aria-pressed="false">２</button>
+          <button class="chip b3" data-vote="3" aria-pressed="false">３</button>
+          <button class="chip b4" data-vote="4" aria-pressed="false">４</button>
         </div>
         <div class="skip-row">
           <button class="skip" id="skipBtn" title="このデッキは評価しない">回答しない</button>
@@ -228,7 +243,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 
         <div class="action-row">
           <button id="nextBtn" class="small-btn primary">次のデッキへ</button>
-          <span class="hint" id="autoNextHint"></span>
+          <span class="hint" id="autoNextHint" aria-live="polite"></span>
         </div>
       </div>
 
@@ -251,7 +266,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 
   <div class="card search-card" style="margin-top:16px">
     <div class="search-row">
-      <input type="text" id="searchInput" placeholder="例: https://www.hareruyamtg.com/decks/0000000  または 0000000">
+      <input type="text" id="searchInput" placeholder="例: https://www.hareruyamtg.com/decks/0000000  または 0000000" aria-label="デッキ検索入力欄">
       <button id="searchBtn" class="small-btn">検索</button>
     </div>
   </div>
@@ -267,16 +282,16 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 
 <!-- 右シート -->
 <div class="sheet-backdrop" id="backdrop"></div>
-<aside class="sheet" id="sheet">
+<aside class="sheet" id="sheet" aria-modal="true" role="dialog">
   <header>
     <div style="font-weight:700">登録 / 削除</div>
     <button id="closeSheet" class="small-btn right">閉じる</button>
   </header>
   <div class="body">
-    <div class="tabs">
-      <button class="tab active" data-tab="reg">登録</button>
-      <button class="tab" data-tab="del">削除（通報）</button>
-      <button class="tab" data-tab="mine">自分の登録</button>
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="reg" role="tab" aria-selected="true">登録</button>
+      <button class="tab" data-tab="del" role="tab" aria-selected="false">削除（通報）</button>
+      <button class="tab" data-tab="mine" role="tab" aria-selected="false">自分の登録</button>
     </div>
 
     <div id="pane-reg">
@@ -357,7 +372,11 @@ function setEmbed(inputUrl){
   fail.style.display="none"; frame.removeAttribute("src"); frame.src = wwwUrl;
   clearTimeout(embedWatch); embedWatch = setTimeout(()=>{ fail.style.display="flex"; }, 6000);
 }
-frame.addEventListener("load", ()=> { clearTimeout(embedWatch); });
+frame.addEventListener("load", ()=> {
+  clearTimeout(embedWatch);
+  // 遅延表示されていた場合でもロード完了時に閉じる
+  try{ fail.style.display="none"; }catch{}
+});
 retryEmbed?.addEventListener("click", ()=> { if (currentDeck?.source_url) setEmbed(currentDeck.source_url); });
 
 /* ===== 状態 ===== */
@@ -385,14 +404,38 @@ function renderChart(c1,c2,c3,c4){
   p3.textContent=Math.round(per[2])+"%";
   p4.textContent=Math.round(per[3])+"%";
 }
+// ▼ここを まるっと差し替え
 async function loadVotesAndRenderResults(forceShow=false){
   if(!currentDeck) return;
-  const { data } = await sb.from("labels").select("bracket").eq("deck_id", currentDeck.id).limit(10000);
+
+  // RPC: labels_counts_by_deck(uuid)
   let c1=0,c2=0,c3=0,c4=0;
-  for(const r of (data||[])){
-    if(r.bracket===1)c1=c1+1; else if(r.bracket===2)c2=c2+1; else if(r.bracket===3)c3=c3+1; else if(r.bracket===4)c4=c4+1;
+  try{
+    const { data: rows, error } = await sb.rpc('labels_counts_by_deck', { p_deck: currentDeck.id });
+    if(!error && Array.isArray(rows)){
+      for(const r of rows){
+        if(r.bracket===1) c1=r.cnt|0;
+        else if(r.bracket===2) c2=r.cnt|0;
+        else if(r.bracket===3) c3=r.cnt|0;
+        else if(r.bracket===4) c4=r.cnt|0;
+      }
+    }else{
+      // フォールバック（万一RPCが不在でも動く）
+      const { data } = await sb.from("labels").select("bracket").eq("deck_id", currentDeck.id).limit(10000);
+      for(const r of (data||[])){
+        if(r.bracket===1)c1=c1+1; else if(r.bracket===2)c2=c2+1; else if(r.bracket===3)c3=c3+1; else if(r.bracket===4)c4=c4+1;
+      }
+    }
+  }catch{
+    // さらに保険：旧ロジック
+    const { data } = await sb.from("labels").select("bracket").eq("deck_id", currentDeck.id).limit(10000);
+    for(const r of (data||[])){
+      if(r.bracket===1)c1=c1+1; else if(r.bracket===2)c2=c2+1; else if(r.bracket===3)c3=c3+1; else if(r.bracket===4)c4=c4+1;
+    }
   }
-  renderChart(c1,c2,c3,c4); if(forceShow) resultsEl.style.display="flex";
+
+  renderChart(c1,c2,c3,c4);
+  if(forceShow) resultsEl.style.display="flex";
 }
 
 /* ===== 自分の投票 ====== */
@@ -517,7 +560,7 @@ async function showDeckByRow(row,{showResults=false}={}){
   await loadMyVote();
 
   clearInterval(autoNextTimer); autoNextTimer=null; autoNextHint.textContent="";
-  nextBtn.classList.remove("pulse");   // ← 新しいデッキ表示でアニメ解除
+  nextBtn.classList.remove("pulse");   // 新しいデッキ表示でアニメ解除
 
   try{ await sb.rpc("log_impression",{ p_session:sid, p_deck: row.id }); }catch(_){}
   deckShownAtMs = performance.now();
@@ -583,7 +626,7 @@ for (const el of document.querySelectorAll(".chip[data-vote]")){
 
       markMyVote(bracket);
       resultsEl.style.display="flex";
-      nextBtn.classList.add("pulse");   // ← 追加：表示直後にアニメ開始
+      nextBtn.classList.add("pulse");   // 表示直後にアニメ開始
       await loadVotesAndRenderResults(true);
 
       rtLabel.style.display="inline"; rtLabel.textContent = `${rtSec}sec`;
@@ -633,10 +676,11 @@ function currentDeckLink(){
 }
 function shareCurrentDeck(){
   const url = currentDeckLink();
-  const text = `このデッキのブラケットは？\n${url}\n#みんなでブラケット診断`;
-  const tw = new URL("https://x.com/intent/tweet"); tw.searchParams.set("text", text);
+  const tw = new URL("https://x.com/intent/tweet");
+  tw.searchParams.set("text", "このデッキのブラケットは？ #みんなでブラケット診断");
+  tw.searchParams.set("url", url);
   const w = window.open(tw.toString(), "_blank", "noopener,noreferrer");
-  if (!w) { location.href = tw.toString(); } // ← フォールバック
+  if (!w) { location.href = tw.toString(); } // フォールバック
 }
 $("#shareBtn").addEventListener("click", shareCurrentDeck);
 
@@ -667,7 +711,8 @@ backdrop.addEventListener("click", closeSheet);
 const tabs = document.querySelectorAll(".tab");
 for(const t of tabs){
   t.addEventListener("click", ()=>{
-    for(const x of tabs){ x.classList.remove("active"); } t.classList.add("active");
+    for(const x of tabs){ x.classList.remove("active"); x.setAttribute("aria-selected","false"); }
+    t.classList.add("active"); t.setAttribute("aria-selected","true");
     const name=t.dataset.tab;
     $("#pane-reg").style.display = name==="reg" ? "block":"none";
     $("#pane-del").style.display = name==="del" ? "block":"none";
@@ -719,39 +764,84 @@ async function loadMine(){
   if(error){ listEl.textContent="読み込みエラー"; return; }
   if(!data || data.length===0){ listEl.textContent="まだ登録がありません。"; return; }
 
-  // まとめて投票集計（成功すれば1クエリ）
+  /* ===== 自分の登録 ===== */
+$("#reloadMine").addEventListener("click", ()=> loadMine());
+async function loadMine(){
+  const listEl=$("#mineList");
+  listEl.innerHTML="読み込み中…";
+
+  // 自分の登録デッキ
+  const { data, error } = await sb.from("decks")
+    .select("id,source_url,deck_name,created_at")
+    .eq("created_by_session", sid)
+    .order("created_at",{ascending:false})
+    .limit(50);
+
+  if(error){ listEl.textContent="読み込みエラー"; return; }
+  if(!data || data.length===0){ listEl.textContent="まだ登録がありません。"; return; }
+
+  // ▼ まとめて投票集計（RPC版）
   const ids = data.map(d=>d.id);
   const countsMap = {};  // deck_id -> [c1,c2,c3,c4]
   try{
     if(ids.length){
-      const { data: agg, error: aggErr } = await sb
-        .from("labels")
-        .select("deck_id, bracket, cnt:count()")
-        .in("deck_id", ids)
-        .group("deck_id, bracket");
+      const { data: agg, error: aggErr } = await sb.rpc('labels_counts_by_deck_many', { p_decks: ids });
       if(!aggErr && Array.isArray(agg)){
         for(const r of agg){
           const arr = countsMap[r.deck_id] || (countsMap[r.deck_id]=[0,0,0,0]);
-          const i = (r.bracket|0)-1; if(i>=0 && i<4) arr[i] = Number(r.cnt)||0;
+          const i = (r.bracket|0) - 1;
+          if(i>=0 && i<4) arr[i] = Number(r.cnt) || 0;
         }
       }
     }
-  }catch{}
+  }catch{ /* no-op */ }
 
-  // フォールバック（環境によって group が使えない場合）
+  // ▼ フォールバック（RPCが使えない/空のときだけ 1件ずつ RPC）
   if(Object.keys(countsMap).length===0){
     for(const d of data){
       try{
-        const { data: rows } = await sb.from("labels")
-          .select("bracket, cnt:count()")
-          .eq("deck_id", d.id)
-          .group("bracket");
+        const { data: rows } = await sb.rpc('labels_counts_by_deck', { p_deck: d.id });
         const arr=[0,0,0,0];
-        for(const r of (rows||[])){ const i=(r.bracket|0)-1; if(i>=0&&i<4) arr[i]=Number(r.cnt)||0; }
+        for(const r of (rows||[])){
+          const i=(r.bracket|0)-1;
+          if(i>=0&&i<4) arr[i]=Number(r.cnt)||0;
+        }
         countsMap[d.id]=arr;
-      }catch{ countsMap[d.id]=[0,0,0,0]; }
+      }catch{
+        countsMap[d.id]=[0,0,0,0];
+      }
     }
   }
+
+  // ▼ UI描画
+  listEl.innerHTML="";
+  for(const d of data){
+    const idNum = toDeckId(d.source_url) || d.id;
+    const item=document.createElement("div"); item.className="item";
+
+    const a=document.createElement("a");
+    a.href=d.source_url; a.target="_blank"; a.rel="noopener noreferrer"; a.textContent = idNum;
+
+    // ミニ投票グラフ
+    const wrap=document.createElement("div"); wrap.className="mini-wrap";
+    const [c1,c2,c3,c4] = countsMap[d.id] || [0,0,0,0];
+    wrap.append( makeMiniBar(c1,c2,c3,c4) );
+
+    const show=document.createElement("button"); show.className="small-btn"; show.textContent="表示"; show.type="button";
+    show.addEventListener("click", async ()=> {
+      const row = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("id", d.id).maybeSingle();
+      if(row.data) await showDeckByRow(row.data,{showResults:false});
+      closeSheet();
+    });
+
+    const del=document.createElement("button"); del.className="small-btn"; del.textContent="削除"; del.type="button";
+    del.addEventListener("click", ()=> deleteOwn(d.id, item));
+
+    // 並び: [リンク][ミニグラフ][表示][削除]
+    item.append(a, wrap, show, del);
+    listEl.appendChild(item);
+  }
+}
 
   listEl.innerHTML="";
   for(const d of data){
