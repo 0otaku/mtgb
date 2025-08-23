@@ -11,7 +11,6 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27><circle cx=%278%27 cy=%278%27 r=%273%27/></svg>">
 
 <style>
-
 :root{
   --bg:#fff; --fg:#111; --muted:#6b7280; --card:#fff; --border:#e5e7eb;
   --brand:#d62828; --c1:#6EE7B7; --c2:#93C5FD; --c3:#FDE68A; --c4:#FCA5A5;
@@ -32,7 +31,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;pa
 /* デッキタグ（タイトル右） */
 .tag-chips{display:inline-flex;gap:6px;flex-wrap:wrap}
 .tagchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);padding:4px 8px;border-radius:999px;background:#fff;color:#374151;font-size:12px;white-space:nowrap}
-.tagchip.theme{border-color:#c7d2fe;background:#eef2ff}  /* indigo系 */
+.tagchip.theme{border-color:#c7d2fe;background:#eef2ff}
 .tagchip.free{border-color:#e5e7eb;background:#f9fafb}
 
 /* 汎用ボタン */
@@ -160,13 +159,11 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 .modal .foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 14px;border-top:1px solid var(--border)}
 
 /* ====== 見た目を小さく控えめに（上書き） ====== */
-
-/* ヘッダー右の表示タグ */
 .tag-chips{ gap:4px; }
 .tagchip{
-  font-size:11px;               /* 小さく */
-  padding:2px 6px;              /* 薄く */
-  border-radius:6px;           /* 角Rも控えめ */
+  font-size:11px;
+  padding:2px 6px;
+  border-radius:6px;
   line-height:1.2;
   background:#fafafa;
   border-color:#e6e6e6;
@@ -184,18 +181,12 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
   border-radius:12px;
 }
 
-/* スマホではさらに控えめ */
-@media (max-width: 680px){
-  .tagchip{ font-size:10px; padding:2px 5px; border-radius:4px; }
-  .chip-sel{ font-size:10px; padding:4px 6px; border-radius:4px; }
-  .tag-chips{ gap:3px; }
-}
-
 /* === ヘッダー右ボタンをモバイルで小さく・同一行に収める === */
 header { align-items: center; }
-.title { flex: 1 1 auto; min-width: 0; }   /* 左側を可変で広げる */
+.title { flex: 1 1 auto; min-width: 0; }
 #openSheet { flex: 0 0 auto; white-space: nowrap; }
 
+/* ===== SPレイアウト（まとめて1ブロックでクローズ） ★ 修正：@media の閉じ漏れを整理 ===== */
 @media (max-width: 680px){
   #openSheet{
     font-size: 12px;
@@ -203,26 +194,9 @@ header { align-items: center; }
     border-radius: 8px;
     line-height: 1.1;
   }
-  .site{ font-size: 18px; }                 /* タイトルも少しだけ詰める */
-  .deck-meta{ font-size: 12px; gap: 8px; }  /* メタ行をコンパクトに */
-}
+  .site{ font-size: 18px; }
+  .deck-meta{ font-size: 12px; gap: 8px; }
 
-/* テーマタグを控えめ強調（背景ちょい濃い & 枠色も少し強め） */
-.tagchip.theme{
-  /* Fallback（color-mix未対応ブラウザ用） */
-  background:#eef2ff;         /* 元の #f6f8ff より少しだけ濃い */
-  border-color:#cfd8ff;
-
-  /* 主要ブラウザ用：サイトのアクセント色をほんのり混ぜる */
-  background: color-mix(in srgb, var(--accent) 16%, white);
-  border-color: color-mix(in srgb, var(--accent) 42%, white);
-
-  /* うるさくならない程度の内側ハイライト（任意） */
-  box-shadow: inset 0 0 0 1px rgba(99,102,241,.04);
-}
-
-/* ===== SPレイアウト: 右上にボタン固定 + タグ4個を横一列 ===== */
-@media (max-width: 680px){
   /* headerを2カラムに（左：タイトル/タグ、右：ボタン） */
   header{
     position: relative;
@@ -234,12 +208,8 @@ header { align-items: center; }
   #openSheet{
     justify-self: end;
     align-self: start;
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 8px;
-    line-height: 1.1;
   }
-  .title{ min-width: 0; }          /* 左カラムを縮められるように */
+  .title{ min-width: 0; }
   .deck-meta{
     display: flex;
     align-items: center;
@@ -247,40 +217,43 @@ header { align-items: center; }
     min-width: 0;
   }
 
-/* ===== SP: ボタンは右上に固定、タグは自動幅＋必要なら改行 ===== */
-@media (max-width: 680px){
-  header{
-    position: relative;
-    display: block;
-  }
+  /* ボタンは右上に固定、タグは自動幅＋必要なら改行 */
+  header{ display:block; }
   #openSheet{
     position: absolute;
     top: 6px;
     right: 8px;
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 8px;
-    line-height: 1.1;
     z-index: 1;
   }
-
-  /* タグ列は全幅を使い、入らなければ折り返す */
   #deckTags.tag-chips{
     display: flex;
-    flex-wrap: wrap;             /* ← ここで改行OKに */
+    flex-wrap: wrap;
     gap: 4px;
     width: 100%;
     overflow: visible;
   }
   #deckTags .tagchip{
-    flex: 0 0 auto;              /* 均等幅を解除＝自動幅 */
+    flex: 0 0 auto;
     max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;     /* 長いラベルは省略表示 */
+    text-overflow: ellipsis;
   }
+
+  /* さらに控えめ（モバイル） */
+  .tagchip{ font-size:10px; padding:2px 5px; border-radius:4px; }
+  .chip-sel{ font-size:10px; padding:4px 6px; border-radius:4px; }
+  .tag-chips{ gap:3px; }
 }
 
+/* テーマタグを控えめ強調 */
+.tagchip.theme{
+  background:#eef2ff;
+  border-color:#cfd8ff;
+  background: color-mix(in srgb, var(--accent) 16%, white);
+  border-color: color-mix(in srgb, var(--accent) 42%, white);
+  box-shadow: inset 0 0 0 1px rgba(99,102,241,.04);
+}
 </style>
 </head>
 <body>
@@ -395,11 +368,10 @@ header { align-items: center; }
   </header>
   <div class="body">
     <div class="tabs" role="tablist">
-  <button class="tab active" data-tab="reg"  role="tab" aria-selected="true">登録</button>
-  <button class="tab"         data-tab="mine" role="tab" aria-selected="false">自分のデッキ</button>
-  <button class="tab"         data-tab="del"  role="tab" aria-selected="false">削除依頼</button>
-</div>
-
+      <button class="tab active" data-tab="reg"  role="tab" aria-selected="true">登録</button>
+      <button class="tab"         data-tab="mine" role="tab" aria-selected="false">自分のデッキ</button>
+      <button class="tab"         data-tab="del"  role="tab" aria-selected="false">削除依頼</button>
+    </div>
 
     <div id="pane-reg">
       <div class="note">
@@ -468,23 +440,22 @@ const SUPABASE_URL  = "https://onzljxnqlrohkzsfxqbh.supabase.co";
 const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemxqeG5xbHJvaGt6c2Z4cWJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NzUzNTksImV4cCI6MjA3MTE1MTM1OX0.eLAP_-PtVm6tBFFCNfOVsTqEcvtZK3x3QFFNeRpxuj8";
 const FN_INGEST     = `${SUPABASE_URL}/functions/v1/ingest-hareruya`;
 const FN_REPORT     = `${SUPABASE_URL}/functions/v1/report-deck`;
-const FN_DELETE_OWN = `${SUPABASE_URL}/functions/v1/delete-own-deck`;
 const FN_VOTE       = `${SUPABASE_URL}/functions/v1/vote`;
 const FN_SKIP       = `${SUPABASE_URL}/functions/v1/skip`;
-/* タグ/理由（あるならEdge/テーブルから取得、無ければハードコードにフォールバック） */
-const FN_SET_TAGS   = `${SUPABASE_URL}/functions/v1/set-tags`;
-const FN_GET_TAGS   = `${SUPABASE_URL}/functions/v1/get-tags`;
-const FN_REASON_ADD = `${SUPABASE_URL}/functions/v1/reason-add`;
-const FN_REASON_SUM = `${SUPABASE_URL}/functions/v1/reason-sum`;
-const APP_URL       = `${location.origin}${location.pathname}`;
 
-// ===== Supabase 設定 =====
+/* 共有URLは末尾 index.html を外す ★ 修正 */
+const APP_URL = (() => {
+  const pathNoIndex = location.pathname.replace(/index\.html?$/i, "");
+  return `${location.origin}${pathNoIndex || "/"}`;
+})();
+
+/* ===== Supabase クライアント ===== */
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession:false, autoRefreshToken:false },
   global: { headers: { apikey: SUPABASE_ANON } }
 });
 
-// 旧/新スキーマを一度だけ判定してキャッシュ（createClient の直後に置く）
+/* ====== スキーマ検出 ====== */
 const __SCHEMA = { kind: null };
 async function detectSchema(){
   if (__SCHEMA.kind) return __SCHEMA.kind;
@@ -511,60 +482,40 @@ function canonUrl(input){ const id = toDeckId(input); return id ? `https://www.h
 
 /* ===== log_impression: 互換ヘルパー ===== */
 async function safeLogImpression(deckId){
-  // v2: 引数名 p_session / p_deck
   try{
     const r = await sb.rpc("log_impression", { p_session: sid, p_deck: deckId });
-    if(!r.error) return;        // ここで通れば終了
+    if(!r.error) return;
   }catch{}
-
-  // v1: 引数名 session_id / deck_id
-  try{
-    await sb.rpc("log_impression", { session_id: sid, deck_id: deckId });
-  }catch{}
+  try{ await sb.rpc("log_impression", { session_id: sid, deck_id: deckId }); }catch{}
 }
 
 /* ===== マスター（テーマ/タグ/理由） ===== */
-/* デフォルト（フォールバック） */
+/* フォールバック（ラベルのみ） */
 let MASTER = {
   themes: ["コンボ","コンセプト","殴り","コントロール","スタックス","墓地利用","トークン","テンポ","ミッドレンジ","ランプ","その他"],
-  tags:   ["部族","ブリンク","カウンター","トークン","墓地利用","ライフゲイン","宝物","ランプ","ロック","妨害","ヘイトベアー","増殖","コピー","装備品","打消し多め","速攻","全体除去","エンチャント多め","アーティファクト多め","多色","単色","二色","三色","５色","部族：エルフ","部族：ゴブリン","部族：人間","部族：スピリット","フレーバー重視"],
-  reasons:["統率者","除去","カウンター","マナ基盤","ロック","ゲームチェンジャー","安定性","コンボ","テーマ","面白さ","フレーバー","速度","カードパワー","シナジー","色"]
+  tags:   ["部族","ブリンク","カウンター","トークン","墓地利用","ライフゲイン","宝物","ランプ","ロック","妨害","ヘイトベアー","増殖","コピー","装備品","打消し多め","速攻","全体除去","エンチャント多め","アーティファクト多め","多色","単色","二色","三色","５色","部族：エルフ","部族：ゴブリン","部族：人間","部族：スピリット","フレーバー重視"]
 };
+/* 理由マスタ（label-reason 用：key/label） */
+let REASONS_MASTER = []; // { key, label }[]
 
-/* masters_public が無くても 404 を出さない安全ローダー */
 async function ensureMasters(){
   try {
-    // 1) テーブル直読（テストでも本番でも存在しやすい）
-    const tm = await sb.from("app_tags_master").select("kind,key,label").limit(1000);
-    if (!tm.error && Array.isArray(tm.data) && tm.data.length) {
-      const themes = tm.data.filter(x=>x.kind==="theme").map(x=>x.label || x.key);
-      const tags   = tm.data.filter(x=>x.kind==="tag").map(x=>x.label || x.key);
+    const t = await sb.from("app_tags_master").select("kind,key,label").limit(2000);
+    if (!t.error && t.data?.length){
+      const themes = t.data.filter(x=>x.kind==="theme").map(x=>x.label || x.key);
+      const tags   = t.data.filter(x=>x.kind==="tag").map(x=>x.label || x.key);
       if (themes.length) MASTER.themes = themes;
       if (tags.length)   MASTER.tags   = tags;
     }
   } catch {}
-
   try {
-    const rm = await sb.from("app_reasons_master").select("key,label").limit(1000);
-    if (!rm.error && Array.isArray(rm.data) && rm.data.length) {
-      MASTER.reasons = rm.data.map(x=>x.label || x.key);
+    const r = await sb.from("app_reasons_master").select("key,label").limit(2000);
+    if (!r.error && r.data?.length){
+      REASONS_MASTER = r.data.map(x => ({ key: String(x.key), label: String(x.label || x.key) }));
     }
   } catch {}
-
-  // 2) 直読で空だった場合のみ masters_public を試す（存在しなければ何もしない）
-  if (!MASTER.themes?.length || !MASTER.tags?.length || !MASTER.reasons?.length) {
-    try{
-      const { data } = await sb.from("masters_public").select("themes,tags,reasons").limit(1).maybeSingle();
-      if (data) {
-        if (Array.isArray(data.themes) && data.themes.length) MASTER.themes = data.themes;
-        if (Array.isArray(data.tags)   && data.tags.length)   MASTER.tags   = data.tags;
-        if (Array.isArray(data.reasons)&& data.reasons.length)MASTER.reasons= data.reasons;
-      }
-    }catch{}
-  }
 }
 await ensureMasters();
-
 
 /* ===== 簡易モーダル ===== */
 const modalBack = $("#modalBack"), modal = $("#modal"), modalTitle=$("#modalTitle"), modalBody=$("#modalBody"), modalSave=$("#modalSave");
@@ -626,7 +577,7 @@ function renderChart(c1,c2,c3,c4){
   p4.textContent=Math.round(per[3])+"%";
 }
 
-/* 5秒未満は除外。ただし「rt_sec が null/未保存」の古い投票は含める（テスト環境の過去データ対策） */
+/* 5秒未満は除外。ただし「rt_sec が null/未保存」の古い投票は含める */
 function passRtFilter(rt){ return (rt==null) || (Number(rt) >= 5); }
 
 async function loadVotesAndRenderResults(forceShow=false){
@@ -762,59 +713,56 @@ function addExtraXPOnce(){
   const s = ensureXP(); s.xp = (s.xp||0) + 1; saveXP(s); reasonXpGiven = true; updateXpUI();
 }
 
-/* ===== 理由チップ ===== */
+/* ===== 理由チップ（label-reasonに統一） ===== */
 function showReasonPanel(){
   reasonXpGiven = false;
   reasonPanel.innerHTML = "";
-  for(const name of MASTER.reasons){
+  const source = REASONS_MASTER.length ? REASONS_MASTER : (MASTER.reasons||[]).map((lab, i)=>({ key: lab, label: lab }));
+  for(const {key,label} of source){
     const b = document.createElement("button");
     b.className = "reason-btn";
-    b.type="button"; b.textContent = name;
-    b.addEventListener("click", ()=> recordReason(name, b));
+    b.type="button"; b.textContent = label;
+    b.dataset.key = key;
+    b.addEventListener("click", ()=> recordReasonKey(key, b));
     reasonPanel.appendChild(b);
   }
   reasonPanel.style.display = "flex";
   setTimeout(()=>{ reasonPanel.style.display="none"; }, 10000);
 }
-async function recordReason(name, btn){
+async function recordReasonKey(reason_key, btn){
   if (!currentDeck) return;
+  let ok=false;
+  // 1) Edge: label-reason
   try{
-    let ok=false;
-    try{
-      const res = await fetch(FN_REASON_ADD, { method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, reason: name }) });
-      const j = await res.json().catch(()=> ({}));
-      ok = res.ok && j?.ok!==false;
-    }catch{}
-    if(!ok){
-      await sb.from("vote_reasons").insert({ deck_id: currentDeck.id, session_id: sid, reason: name });
-      ok=true;
-    }
-    if(ok){ btn.classList.add("on"); addExtraXPOnce(); }
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/label-reason`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+      body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, reasons: [reason_key] })
+    });
+    const j = await res.json().catch(()=> ({}));
+    ok = res.ok && j?.ok!==false;
   }catch{}
+  // 2) 直書きフォールバック
+  if(!ok){
+    try{
+      const ins = await sb.from("label_reasons").upsert([{ deck_id: currentDeck.id, session_id: sid, reason_key }]);
+      ok = !ins.error;
+    }catch{}
+  }
+  if(ok){ btn.classList.add("on"); addExtraXPOnce(); }
 }
 
-// タイトル右のタグ表示（Edge→新→旧）
+/* タイトル右のタグ表示（新→旧） */
 function tagChip(txt, kind){
   const el = document.createElement("span");
   el.className = "tagchip " + (kind || "free");
   el.textContent = txt;
   return el;
 }
-
 async function showDeckTags(deck_id){
   const box = $("#deckTags");
   box.innerHTML = "";
   if (!deck_id) return;
-
-  // 0) Edge（CORS回避のため invoke 優先）
-  try{
-    const { data, error } = await sb.functions.invoke("get-tags", { body: { deck_id }});
-    if (!error && data?.ok && data?.data){
-      if (data.data.theme) box.appendChild(tagChip(data.data.theme, "theme"));
-      for (const t of (data.data.tags||[]).slice(0,3)) box.appendChild(tagChip(t,"free"));
-      return;
-    }
-  }catch{}
 
   // 1) 新スキーマ（decks.theme_key / deck_tags.tag_key）
   try{
@@ -909,7 +857,7 @@ async function loadRandomDeck(){
   await showDeckByRow(row,{showResults:false});
 }
 
-/* ===== 存在確認 ===== */
+/* ===== 存在確認（なければ登録） ===== */
 async function ensureDeckExists(url){
   const { data } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
   if(data?.id) return data;
@@ -1061,7 +1009,7 @@ function chip(htmlText, on, onclick){
   s.className = "chip-sel"+(on?" on":"");
   s.innerHTML = htmlText;
   s.addEventListener("click", ()=>{
-    onclick?.(!s.classList.contains("on")); // 事前に可否チェック
+    onclick?.(!s.classList.contains("on"));
     const canToggle = s.dataset._allow==="1";
     if(!canToggle) return;
     s.classList.toggle("on");
@@ -1087,7 +1035,6 @@ function initRegTagsUI(){
   regTagBox.innerHTML = ""; regChosen.clear();
   for(const t of MASTER.tags){
     const c = chip(t, false, (willOn)=> {
-      // 事前チェック: 3つ超は不可
       if(willOn && regChosen.size>=3){ c.dataset._allow="0"; return; }
       c.dataset._allow="1";
       if(willOn) regChosen.add(t); else regChosen.delete(t);
@@ -1099,24 +1046,14 @@ function initRegTagsUI(){
 }
 initRegTagsUI();
 
-// タグ保存（Edge → 明示スキーマ分岐（new/old））
+/* タグ保存（新/旧スキーマ直書き。Edge set-tagsは使わない） */
 async function saveTagsForDeck(deck_id, themeLabel, tagLabels){
   if (!deck_id) return false;
   const tagsArr = Array.from(new Set(Array.isArray(tagLabels) ? tagLabels : [])).slice(0,3);
-
-  // 0) Edge（動けば終了）
-  try{
-    const { data, error } = await sb.functions.invoke("set-tags", {
-      body: { deck_id, theme: (themeLabel||null), tags: tagsArr }
-    });
-    if (!error && data?.ok !== false) return true;
-  }catch{}
-
   const kind = await detectSchema();
 
   if (kind === "new"){
     try{
-      // label→key 解決（無ければ label を key として採用）
       const { data: masters } = await sb.from("app_tags_master").select("key,label,kind").limit(2000);
       const toKey = (label, needKind)=> {
         const hit = (masters||[]).find(m => m.kind===needKind && (m.label===label || m.key===label));
@@ -1130,7 +1067,6 @@ async function saveTagsForDeck(deck_id, themeLabel, tagLabels){
         ...keys.map(k => ({ deck_id, tag_key: k, created_by_session: sid }))
       ];
 
-      // 失敗時に消えるのを避けるため、現在値を退避→削除→挿入（挿入失敗時は可能な範囲でロールバック）
       const before = await sb.from("deck_tags").select("tag_key").eq("deck_id", deck_id);
       await sb.from("deck_tags").delete().eq("deck_id", deck_id);
       if (rows.length){
@@ -1153,7 +1089,6 @@ async function saveTagsForDeck(deck_id, themeLabel, tagLabels){
       return true;
     }catch{}
   }
-
   return false;
 }
 
@@ -1202,34 +1137,19 @@ $("#delBtn").addEventListener("click", async ()=>{
 $("#reloadMine").addEventListener("click", ()=> loadMine());
 
 async function openTagsModal(deck_id){
-  // 取得したテーマ/タグを「ラベル」で保持する
+  // 表示値を「ラベル」で保持
   let theme = null, tags = [];
 
-  // --- 0) Edge Functions（CORS回避：invokeを最優先） ---
+  // 旧スキーマ（先に簡単な方）
   try{
-    const { data, error } = await sb.functions.invoke("get-tags", { body: { deck_id } });
-    if(!error && data){
-      // 可能性のある返却形に広く対応
-      const payload = data.data ?? data;
-      const t = payload.theme ?? payload.theme_label ?? null;
-      const arr = payload.tags  ?? payload.tag_labels ?? [];
-      if (t) theme = String(t);
-      if (Array.isArray(arr)) tags = arr.map(String);
+    const q = await sb.from("deck_tags").select("theme,tags").eq("deck_id", deck_id).maybeSingle();
+    if (!q.error && q.data){
+      theme = q.data.theme || null;
+      tags  = Array.isArray(q.data.tags) ? q.data.tags : [];
     }
   }catch{}
 
-  // --- 1) 旧スキーマ（deck_tags.theme/tags） ---
-  if (theme===null && tags.length===0){
-    try{
-      const q = await sb.from("deck_tags").select("theme,tags").eq("deck_id", deck_id).maybeSingle();
-      if (!q.error && q.data){
-        theme = q.data.theme || null;
-        tags  = Array.isArray(q.data.tags) ? q.data.tags : [];
-      }
-    }catch{}
-  }
-
-  // --- 2) 新スキーマ（decks.theme_key / deck_tags.tag_key） ---
+  // 新スキーマ
   if (theme===null && tags.length===0){
     try{
       const [deckRow, tagRows] = await Promise.all([
@@ -1245,7 +1165,6 @@ async function openTagsModal(deck_id){
 
         const toLabel = (k)=> (masters||[]).find(m=>m.key===k)?.label || k;
 
-        // テーマは theme_key を優先、なければ tag_key に kind===theme があるかチェック
         theme = tkey ? toLabel(tkey) : null;
 
         if (!theme){
@@ -1253,7 +1172,6 @@ async function openTagsModal(deck_id){
           if (tFromTags) theme = tFromTags.label || tFromTags.key;
         }
 
-        // 自由タグは theme とかぶるキーを除外
         const themeKeyResolved = (masters||[]).find(m => (m.label===theme || m.key===theme))?.key ?? null;
         tags = tkeys
           .filter(k => k !== themeKeyResolved)
@@ -1269,14 +1187,11 @@ async function openTagsModal(deck_id){
   cap1.className = "note"; cap1.style.margin = "6px 0 4px";
 
   const sel = document.createElement("select");
-  // マスターに無いラベルでも選べるように、先頭に「未選択」、ついでに現在の値を先に差し込む
   sel.innerHTML = `<option value="">未選択</option>`;
   if (theme && !MASTER.themes.includes(theme)){
     sel.insertAdjacentHTML("beforeend", `<option value="${theme}">${theme}</option>`);
   }
   sel.insertAdjacentHTML("beforeend", MASTER.themes.map(v=> `<option value="${v}">${v}</option>`).join(""));
-
-  // “ラベル一致” で確実に選択するヘルパ
   const choose = (selectEl, valueOrText) => {
     const want = String(valueOrText ?? "").trim();
     if (!want){ selectEl.value=""; return; }
@@ -1286,11 +1201,9 @@ async function openTagsModal(deck_id){
       if (opt){ opt.selected = true; }
     }
   };
-  choose(sel, theme);   // ← 既存テーマを確実に選択
-
+  choose(sel, theme);
   body.append(cap1, sel);
 
-  // タグ（最大3つ）
   const cap2 = Object.assign(document.createElement("div"), { textContent:"タグ（最大3つ）" });
   cap2.className="note"; cap2.style.margin = "10px 0 4px";
 
@@ -1304,7 +1217,6 @@ async function openTagsModal(deck_id){
     }
   }
 
-  // マスターに無いタグも最初から選べるようにする
   const tagUniverse = [...new Set([ ...MASTER.tags, ...chosen ])];
   for(const t of tagUniverse){
     const b = document.createElement("button");
@@ -1329,52 +1241,33 @@ async function openTagsModal(deck_id){
   });
 }
 
-
 async function openReasonsModal(deck_id){
   let rows = [];
 
-  // --- 0) Edge Functions（invoke優先。返却形の揺れに対応） ---
+  // 1) label_reasons 直読 → JS集計
   try{
-    const { data, error } = await sb.functions.invoke("reason-sum", { body: { deck_id, limit: 50 } });
-    if (!error && data){
-      const payload = data.data ?? data.reasons ?? data;
-      if (Array.isArray(payload)){
-        // 文字列配列 or {reason,cnt}[] の両対応
-        if (typeof payload[0] === "string"){
-          const m = new Map();
-          for(const r of payload){ m.set(r, (m.get(r)||0)+1); }
-          rows = [...m.entries()].map(([reason,cnt])=>({reason, cnt}));
-        }else{
-          rows = payload.map(x => ({ reason: String(x.reason ?? x.name ?? "その他"), cnt: Number(x.cnt ?? x.count ?? 0) }));
-        }
-      }
+    const { data: list, error } = await sb
+      .from("label_reasons")
+      .select("reason_key")
+      .eq("deck_id", deck_id)
+      .limit(10000);
+    if(!error && Array.isArray(list)){
+      const m = new Map();
+      for(const r of list){ const k=(r?.reason_key||"その他"); m.set(k,(m.get(k)||0)+1); }
+      rows = [...m.entries()].map(([key,cnt])=>({key,cnt})).sort((a,b)=>b.cnt-a.cnt).slice(0,50);
     }
   }catch{}
 
-  // --- 1) vote_reasons 直読 → JS集計 ---
-  if (rows.length === 0){
-    try{
-      const { data: list, error } = await sb
-        .from("vote_reasons")
-        .select("reason")
-        .eq("deck_id", deck_id)
-        .limit(10000);
-      if(!error && Array.isArray(list)){
-        const m = new Map();
-        for(const r of list){ const k=(r?.reason||"その他"); m.set(k,(m.get(k)||0)+1); }
-        rows = [...m.entries()].map(([reason,cnt])=>({reason,cnt})).sort((a,b)=>b.cnt-a.cnt).slice(0,50);
-      }
-    }catch{}
-  }
-
-  // --- 2) RPC フォールバック ---
-  if (rows.length === 0){
-    try{
-      const { data, error } = await sb.rpc("reason_sum_by_deck", { p_deck: deck_id, p_limit: 50 });
-      if(!error && Array.isArray(data)){
-        rows = data.map(r => ({ reason: r.reason, cnt: Number(r.cnt)||0 })).sort((a,b)=>b.cnt-a.cnt);
-      }
-    }catch{}
+  // キー→ラベル解決
+  if (rows.length){
+    let labelMap = new Map(REASONS_MASTER.map(r=>[r.key, r.label]));
+    if (!labelMap.size){
+      try{
+        const r = await sb.from("app_reasons_master").select("key,label").in("key", rows.map(x=>x.key));
+        if (!r.error && r.data?.length) labelMap = new Map(r.data.map(x=>[String(x.key), String(x.label||x.key)]));
+      }catch{}
+    }
+    rows = rows.map(x => ({ reason: labelMap.get(String(x.key)) || String(x.key), cnt: x.cnt }));
   }
 
   // ===== 表示 =====
@@ -1405,7 +1298,6 @@ async function loadMine(){
   if(error){ listEl.textContent="読み込みエラー"; return; }
   if(!data || data.length===0){ listEl.textContent="まだ登録がありません。"; return; }
 
-  // 集計（rt_sec>=5 or null）
   const ids = data.map(d=>d.id);
   const countsMap = {};
   try{
@@ -1463,20 +1355,9 @@ async function loadMine(){
   }
 }
 
-/* 削除フォールバック */
+/* 削除：ダミーEdgeは呼ばず、RPC→直書きの順にフォールバック */
 async function deleteOwn(deck_id, node){
   if(!confirm("この登録を削除しますか？（投票/通報も削除されます）")) return;
-
-  try{
-    const { data, error } = await sb.functions.invoke("delete-own-deck", { body: { deck_id, session_id: sid } });
-    if(!error && (data?.ok!==false)){ toast("削除しました"); if(node) node.remove(); if(currentDeck?.id===deck_id) loadRandomDeck(); return; }
-  }catch{}
-
-  try{
-    const res = await fetch(FN_DELETE_OWN,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ deck_id, session_id: sid }) });
-    const j = await res.json().catch(()=> ({}));
-    if(res.ok && j?.ok){ toast("削除しました"); if(node) node.remove(); if(currentDeck?.id===deck_id) loadRandomDeck(); return; }
-  }catch{}
 
   try{
     const r = await sb.rpc('delete_own_deck', { p_deck: deck_id, p_session: sid });

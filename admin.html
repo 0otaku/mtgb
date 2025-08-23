@@ -22,14 +22,11 @@
   .link{color:#2563eb;text-decoration:none}
   .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono",monospace}
   .section{margin-top:16px}
-  details>summary{cursor:pointer;user-select:none}
   .close-btn{margin-left:auto}
   .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f3f4f6;border:1px solid #e5e7eb}
   .kpi{display:flex;gap:10px;flex-wrap:wrap}
   .kpi .box{border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;min-width:120px}
   .kpi .box b{font-size:18px}
-
-  /* 追加: マスター編集用のチップUI */
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
   .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #e5e7eb;border-radius:999px;padding:4px 8px;font-size:12px;background:#fff}
   .chip .x{cursor:pointer;opacity:.7}
@@ -48,7 +45,7 @@
       <label>通報しきい値 <input id="th" type="number" value="5" style="width:90px"></label>
       <button id="btnLoadSet">読み込み</button>
       <button id="btnSaveSet" class="ok">保存</button>
-      <button class="close-btn" onclick="/* no-op */">閉じる</button>
+      <button class="close-btn" data-close>閉じる</button>
     </div>
     <div class="grid" style="margin-top:10px">
       <div>
@@ -64,17 +61,17 @@
         <button id="btnSaveRules" class="ok">ルール保存</button>
       </div>
     </div>
-    <div class="muted">※ これらは <code>app_settings</code> テーブルに <code>xp_rules</code>, <code>mana_rules</code> として保存</div>
+    <div class="muted">※ <code>app_settings</code> の <code>report_delete_threshold / xp_rules / mana_rules</code> を読み書き</div>
   </details>
 
-  <!-- ====== サマリー & 人気 ====== -->
+  <!-- ====== サマリー / 人気 ====== -->
   <details class="section" open>
     <summary><h2>サマリー / 人気デッキ</h2></summary>
     <div class="card">
       <div class="row">
         <label>過去 <input id="days_sum" type="number" value="7" style="width:90px"></label> 日
         <button id="btnLoadSummary">サマリー読み込み</button>
-        <button class="close-btn" onclick="clearNode('sumBox')">閉じる</button>
+        <button class="close-btn" data-close>閉じる</button>
       </div>
       <div id="sumBox" class="kpi" style="margin-top:8px"></div>
     </div>
@@ -84,7 +81,7 @@
         <label>過去 <input id="days_pop" type="number" value="7" style="width:90px"></label> 日
         <label>件数 <input id="limit_pop" type="number" value="20" style="width:90px"></label>
         <button id="btnLoadPop">人気デッキ 読み込み</button>
-        <button class="close-btn" onclick="clearNode('popBox')">閉じる</button>
+        <button class="close-btn" data-close>閉じる</button>
       </div>
       <div id="popBox" class="grid"></div>
     </div>
@@ -100,7 +97,7 @@
       <label>From <input id="from" type="date"></label>
       <label>To <input id="to" type="date"></label>
       <button id="btnLoadReports">読み込み</button>
-      <button class="close-btn" onclick="clearNode('reportList')">閉じる</button>
+      <button class="close-btn" data-close>閉じる</button>
     </div>
     <div id="reportList" class="grid"></div>
   </details>
@@ -108,34 +105,29 @@
   <!-- ====== アナリティクス ====== -->
   <details class="section" open>
     <summary><h2>アナリティクス</h2></summary>
-
     <div class="card">
       <div class="row">
         <label>過去 <input id="days_rt" type="number" value="7" style="width:90px"></label> 日
         <button id="btnLoadRT">反応速度 読み込み</button>
-        <button class="close-btn" onclick="clearNode('rtBox')">閉じる</button>
+        <button class="close-btn" data-close>閉じる</button>
       </div>
       <div id="rtBox" class="grid"></div>
     </div>
-
     <div class="card">
       <div class="row">
         <label>過去 <input id="days_imp" type="number" value="7" style="width:90px"></label> 日
-        <label><select id="grain">
-          <option value="hour">時間</option><option value="day">日</option>
-        </select></label>
+        <label><select id="grain"><option value="hour">時間</option><option value="day">日</option></select></label>
         <button id="btnLoadImp">アクセス数 読み込み</button>
-        <button class="close-btn" onclick="clearNode('impBox')">閉じる</button>
+        <button class="close-btn" data-close>閉じる</button>
       </div>
       <div id="impBox" class="grid"></div>
     </div>
-
     <div class="card">
       <div class="row">
         <label>過去 <input id="days_vbd" type="number" value="7" style="width:90px"></label> 日
         <label>件数 <input id="vbd_limit" type="number" value="100" style="width:90px"></label>
         <button id="btnLoadVBD">デッキ別投票数 読み込み</button>
-        <button class="close-btn" onclick="clearNode('vbdBox')">閉じる</button>
+        <button class="close-btn" data-close>閉じる</button>
       </div>
       <div id="vbdBox" class="grid"></div>
     </div>
@@ -146,7 +138,7 @@
     <summary><h2>ブロック一覧</h2></summary>
     <div class="row">
       <button id="btnLoadBL">読み込み</button>
-      <button class="close-btn" onclick="clearNode('blocklist')">閉じる</button>
+      <button class="close-btn" data-close>閉じる</button>
     </div>
     <div class="grid" id="blocklist"></div>
   </details>
@@ -158,7 +150,7 @@
       <label>過去 <input id="days_rep" type="number" value="7" style="width:90px"></label> 日間
       <label>件数 <input id="limit_rep" type="number" value="100" style="width:90px"></label>
       <button id="btnLoadRep">読み込み</button>
-      <button class="close-btn" onclick="clearNode('reporters')">閉じる</button>
+      <button class="close-btn" data-close>閉じる</button>
     </div>
     <div id="reporters" class="grid"></div>
   </details>
@@ -169,7 +161,7 @@
       <label>過去 <input id="days_reg" type="number" value="7" style="width:90px"></label> 日間
       <label>件数 <input id="limit_reg" type="number" value="100" style="width:90px"></label>
       <button id="btnLoadReg">読み込み</button>
-      <button class="close-btn" onclick="clearNode('registrants')">閉じる</button>
+      <button class="close-btn" data-close>閉じる</button>
     </div>
     <div id="registrants" class="grid"></div>
   </details>
@@ -181,7 +173,7 @@
       <label>過去 <input id="days_del" type="number" value="30" style="width:90px"></label> 日間
       <label>件数 <input id="limit_del" type="number" value="100" style="width:90px"></label>
       <button id="btnLoadDel">読み込み</button>
-      <button class="close-btn" onclick="clearNode('deletedList')">閉じる</button>
+      <button class="close-btn" data-close>閉じる</button>
     </div>
     <div id="deletedList" class="grid"></div>
   </details>
@@ -191,7 +183,7 @@
     <summary><h2>保留削除（スケジュール）</h2></summary>
     <div class="row">
       <button id="btnLoadPending">読み込み</button>
-      <button class="close-btn" onclick="clearNode('pendingList')">閉じる</button>
+      <button class="close-btn" data-close>閉じる</button>
     </div>
     <div id="pendingList" class="grid"></div>
   </details>
@@ -202,7 +194,7 @@
     <div class="row">
       <label>時間 <input id="hours_sp" type="number" value="24" style="width:90px"></label>
       <button id="btnLoadSpikes">読み込み</button>
-      <button class="close-btn" onclick="clearNode('spikeList')">閉じる</button>
+      <button class="close-btn" data-close>閉じる</button>
     </div>
     <div id="spikeList" class="grid"></div>
   </details>
@@ -214,16 +206,15 @@
       <label>過去 <input id="days_reason" type="number" value="7" style="width:90px"></label> 日間
       <label>deck_id <input id="deck_reason" placeholder="（任意）uuid" style="min-width:320px"></label>
       <button id="btnLoadReasonTop">読み込み</button>
-      <button class="close-btn" onclick="clearNode('reasonTop')">閉じる</button>
+      <button class="close-btn" data-close>閉じる</button>
     </div>
     <div id="reasonTop" class="grid"></div>
-    <div class="muted">※ admin2 の <code>reasons_top</code> を使用（Edge）</div>
+    <div class="muted">※ admin2 の <code>reasons_top</code> を使用（5秒フィルタ仕様のまま）</div>
   </details>
 
-  <!-- ====== 追加: マスター編集（テーマ/タグ/投票理由） ====== -->
+  <!-- ====== マスター編集（テーマ / タグ / 投票理由） ====== -->
   <details class="section" open>
     <summary><h2>マスター編集（テーマ / タグ / 投票理由）</h2></summary>
-
     <div class="card">
       <h3>テーマ（1択）</h3>
       <div class="row">
@@ -233,7 +224,6 @@
       </div>
       <div id="themeChips" class="chips"></div>
     </div>
-
     <div class="card">
       <h3>タグ（複数 / 投稿は最大3）</h3>
       <div class="row">
@@ -242,7 +232,6 @@
       </div>
       <div id="tagChips" class="chips"></div>
     </div>
-
     <div class="card">
       <h3>投票理由（Next下に並ぶ小ボタン）</h3>
       <div class="row">
@@ -251,29 +240,51 @@
       </div>
       <div id="reasonChips" class="chips"></div>
     </div>
-
     <div class="row">
       <button id="btnSaveMasters" class="ok">保存</button>
-      <button class="close-btn" onclick="/* no-op */">閉じる</button>
+      <button class="close-btn" data-close>閉じる</button>
     </div>
-    <div class="muted">※ admin2: <code>?view=masters</code> / <code>action=set_masters</code></div>
+    <div class="muted">※ <code>admin2?action=set_masters</code> に統一（<code>set-tags</code>/<code>reason-add</code> は非公開/未使用）</div>
   </details>
 
 <script>
-/* ====== 接続設定 ====== */
 const ADMIN2_URL = "https://onzljxnqlrohkzsfxqbh.supabase.co/functions/v1/admin2";
 const $id = (id)=>document.getElementById(id);
 $id("token").value = localStorage.getItem("admin_token") || "";
 $id("token").addEventListener("input",()=>localStorage.setItem("admin_token",$id("token").value));
 
-/* ====== 共通ユーティリティ ====== */
+// summaryの開閉は標準動作を許可
+document.querySelectorAll('[data-close]').forEach(btn=>{
+  btn.addEventListener('click', (e)=>{
+    const details = e.target.closest('details');
+    if(details) details.open = false;
+  });
+});
+
+function el(tag, attrs={}, ...children){
+  const e=document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs||{})){
+    if(k==="class") e.className=v;
+    else if(k==="href") e.setAttribute("href", v);
+    else if(k==="target") e.setAttribute("target", v);
+    else if(k==="rel") e.setAttribute("rel", v);
+    else if(k==="value") e.value = v;
+    else e.setAttribute(k, v);
+  }
+  for(const c of children){
+    if(c==null) continue;
+    if(typeof c==="string") e.appendChild(document.createTextNode(c));
+    else e.appendChild(c);
+  }
+  return e;
+}
+
 function clearNode(id){ const el=document.getElementById(id); if(el) el.innerHTML=''; }
-document.querySelectorAll('details.section > summary').forEach(s=>{ s.addEventListener('click', e=> e.preventDefault()); });
 function fmtDate(s){ try{ return new Date(s).toLocaleString('ja-JP',{ timeZone:'Asia/Tokyo', hour12:false }); }catch{ return s; } }
 function clearBox(node){ node.innerHTML=""; }
-function JErr(box,e){ box.innerHTML = `<div class="muted">未対応またはエラー：${(e?.message||e)}</div>`; }
+function JErr(box,e){ box.innerHTML = ""; box.append(el("div",{class:"muted"},`未対応またはエラー：${(e?.message||e)}`)); }
 
-/* ====== 汎用API ====== */
+// 汎用API
 async function callAdmin2(query, opt={}){
   const token = $id("token").value.trim();
   if(!token){ alert("Admin Token を入力してください"); throw new Error("no token"); }
@@ -287,11 +298,13 @@ async function callAdmin2(query, opt={}){
   return json;
 }
 
-/* ====== 設定 ====== */
+// 設定
 async function loadSettings(){
   try{
     const j = await callAdmin2(`?view=settings`);
     $id("th").value = j.data?.report_delete_threshold?.value ?? 5;
+    $id("xpJson").value   = j.data?.xp_rules   ? JSON.stringify(j.data.xp_rules, null, 2) : "";
+    $id("manaJson").value = j.data?.mana_rules ? JSON.stringify(j.data.mana_rules, null, 2) : "";
   }catch(e){ alert("設定取得エラー: "+e.message); }
 }
 async function saveSettings(){
@@ -301,43 +314,29 @@ async function saveSettings(){
     alert("保存しました");
   }catch(e){ alert("保存エラー: "+e.message); }
 }
-$id("btnLoadSet").onclick = loadSettings;
-$id("btnSaveSet").onclick = saveSettings;
-
-/* ルール（JSON） */
-function autoHeight(el){ el.style.height="auto"; el.style.height = (el.scrollHeight+4)+"px"; }
-["xpJson","manaJson"].forEach(id=>{ const el=$id(id); el.addEventListener("input",()=>autoHeight(el)); setTimeout(()=>autoHeight(el),10); });
-
-async function loadRules(){
-  try{
-    const j = await callAdmin2(`?view=settings`);
-    $id("xpJson").value   = j.data?.xp_rules ? JSON.stringify(j.data.xp_rules, null, 2) : "";
-    $id("manaJson").value = j.data?.mana_rules ? JSON.stringify(j.data.mana_rules, null, 2) : "";
-    ["xpJson","manaJson"].forEach(id=>autoHeight($id(id)));
-  }catch(e){ alert("ルール取得エラー: "+e.message); }
-}
+async function loadRules(){ await loadSettings(); }
 async function saveRules(){
   try{
-    let xp=null, mana=null;
-    const tXp=$id("xpJson").value.trim(), tMana=$id("manaJson").value.trim();
-    if(tXp){ xp = JSON.parse(tXp); }
-    if(tMana){ mana = JSON.parse(tMana); }
+    const xp = $id("xpJson").value.trim() ? JSON.parse($id("xpJson").value) : null;
+    const mana = $id("manaJson").value.trim() ? JSON.parse($id("manaJson").value) : null;
     await callAdmin2("",{ method:"POST", body:{ action:"set_settings", report_delete_threshold:Number($id("th").value||5), xp_rules:xp, mana_rules:mana }});
     alert("保存しました");
   }catch(e){ alert("JSONエラー: "+e.message); }
 }
+$id("btnLoadSet").onclick = loadSettings;
+$id("btnSaveSet").onclick = saveSettings;
 $id("btnLoadRules").onclick = loadRules;
 $id("btnSaveRules").onclick = saveRules;
 
-/* ====== サマリー ====== */
-async function loadSummary(){
+// サマリー
+$id("btnLoadSummary").onclick = async ()=>{
   const box=$id("sumBox"); box.innerHTML="読み込み中…";
   try{
     const days=Number($id("days_sum").value||7);
     const j = await callAdmin2(`?view=analytics_summary&days=${days}`);
-    const d = j.data;
     box.innerHTML="";
-    const mk=(label,val)=>{ const div=document.createElement("div"); div.className="box"; div.innerHTML=`<div class="muted">${label}</div><b>${val}</b>`; return div; };
+    const mk=(label,val)=>el("div",{class:"box"}, el("div",{class:"muted"},label), el("b",{}, String(val)));
+    const d = j.data;
     box.append(
       mk("期間", d.label),
       mk("平均RT(>=5s)", d.avg_rt),
@@ -347,34 +346,34 @@ async function loadSummary(){
       mk("UU(投票者)", d.uu_voters)
     );
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadSummary").onclick = loadSummary;
+};
 
-/* ====== 人気デッキ ====== */
-async function loadPopular(){
+// 人気デッキ
+$id("btnLoadPop").onclick = async ()=>{
   const box=$id("popBox"); box.innerHTML="読み込み中…";
   try{
     const days = Number($id("days_pop").value||7);
     const limit= Number($id("limit_pop").value||20);
     const j = await callAdmin2(`?view=votes_deck&days=${days}&limit=${limit}`);
     const rows = j.data||[];
-    if(!rows.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
     box.innerHTML="";
+    if(!rows.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     for(const r of rows){
-      const el=document.createElement("div"); el.className="card";
-      el.innerHTML = `<div class="row">
-        <a class="link" target="_blank" href="${r.source_url}">${r.deck_name||r.source_url||r.deck_id}</a>
-        <span class="pill mono">ID ${r.deck_id}</span>
-        <span class="muted">votes ${r.votes}</span>
-      </div>`;
-      box.append(el);
+      const card = el("div",{class:"card"});
+      const row = el("div",{class:"row"});
+      row.append(
+        el("a",{class:"link",href:r.source_url,target:"_blank",rel:"noopener noreferrer"}, r.deck_name||r.source_url||r.deck_id),
+        el("span",{class:"pill mono"},`ID ${r.deck_id}`),
+        el("span",{class:"muted"},`votes ${r.votes}`)
+      );
+      card.append(row);
+      box.append(card);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadPop").onclick = loadPopular;
+};
 
-/* ====== 通報一覧（BAN/削除/クリア/保留） ====== */
-async function loadReports(){
+// 通報一覧
+$id("btnLoadReports").onclick = async ()=>{
   const box = $id("reportList"); clearBox(box);
   try{
     const q = $id("q").value.trim();
@@ -388,81 +387,76 @@ async function loadReports(){
     if(to) qs.set("to", to);
     const j = await callAdmin2(`?${qs.toString()}`);
     const data = j.data||[];
-    if(!data.length){ box.innerHTML = `<div class="muted">0件</div>`; return; }
+    if(!data.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     for(const r of data){
-      const div = document.createElement("div"); div.className="card";
-      const a = document.createElement("a"); a.href=r.deck_source_url; a.target="_blank"; a.className="link"; a.textContent = r.deck_name || r.deck_source_url;
-      const idpill = `<span class="pill mono">ID ${r.deck_id}</span>`;
-      const row1 = document.createElement("div"); row1.className="row";
-      row1.append(a); row1.insertAdjacentHTML("beforeend", idpill);
-      const row2 = document.createElement("div"); row2.className="row muted";
-      row2.textContent = `通報 ${r.report_count} / 最終 ${fmtDate(r.latest_reported_at)} / 登録者 ${r.author_ip||"-"} / ${r.author_session||"-"}`;
+      const div = el("div",{class:"card"});
+      const row1 = el("div",{class:"row"});
+      row1.append(
+        el("a",{href:r.deck_source_url,target:"_blank",rel:"noopener noreferrer",class:"link"}, r.deck_name || r.deck_source_url),
+        el("span",{class:"pill mono"},`ID ${r.deck_id}`)
+      );
+      const row2 = el("div",{class:"row muted"}, `通報 ${r.report_count} / 最終 ${fmtDate(r.latest_reported_at)} / 登録者 ${r.author_ip||"-"} / ${r.author_session||"-"}`);
 
-      const btns = document.createElement("div"); btns.className="btns";
-      const btnBan = document.createElement("button"); btnBan.className="warn"; btnBan.textContent="投稿者BAN";
+      const btns = el("div",{class:"btns"});
+      const btnBan = el("button",{class:"warn"},"投稿者BAN");
       btnBan.onclick = async ()=>{
         if(!confirm("このデッキの投稿者をIP/Sessionでブロックしますか？")) return;
         try{ await callAdmin2("",{method:"POST", body:{action:"block_author_of_deck", deck_id:r.deck_id}}); alert("ブロックしました"); }
         catch(e){ alert("BAN失敗: "+e.message); }
       };
-      const btnDel = document.createElement("button"); btnDel.className="danger"; btnDel.textContent="削除";
+      const btnDel = el("button",{class:"danger"},"削除");
       btnDel.onclick = async ()=>{
         if(!confirm("このデッキを削除しますか？")) return;
         try{ await callAdmin2("",{method:"POST", body:{action:"delete_deck", deck_id:r.deck_id}}); div.remove(); }
         catch(e){ alert("削除失敗: "+e.message); }
       };
-      const btnClr = document.createElement("button"); btnClr.className="warn"; btnClr.textContent="通報クリア";
+      const btnClr = el("button",{},"通報クリア");
       btnClr.onclick = async ()=>{
         try{ await callAdmin2("",{method:"POST", body:{action:"clear_reports", deck_id:r.deck_id}}); alert("クリアしました"); }
         catch(e){ alert("失敗: "+e.message); }
       };
-      const btnPd = document.createElement("button"); btnPd.textContent="保留にする";
+      const btnPd = el("button",{},"保留にする");
       btnPd.onclick= async ()=>{
         try{ await callAdmin2("",{method:"POST", body:{action:"schedule_delete_deck", deck_id:r.deck_id, reason:"reports"}}); alert("保留にしました"); }
         catch(e){ alert("失敗: "+e.message); }
       };
-
       btns.append(btnBan, btnDel, btnClr, btnPd);
       div.append(row1,row2,btns);
       box.append(div);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadReports").onclick = loadReports;
+};
 
-/* ====== アナリティクス：反応速度 ====== */
-async function loadRT(){
+// RT
+$id("btnLoadRT").onclick = async ()=>{
   const box=$id("rtBox"); clearBox(box);
   try{
     const days = Number($id("days_rt").value||7);
     const j = await callAdmin2(`?view=rt_global&days=${days}`);
     const res=j.data||[];
-    if(!res.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    if(!res.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     for(const r of res){
       const avgNum = Number(r.avg_rt ?? r.avg ?? r.avg_sec ?? 0);
       const avgTxt = isFinite(avgNum) && avgNum>0 ? avgNum.toFixed(1) : String(r.avg_rt ?? r.avg ?? "0.0");
-      const el=document.createElement("div"); el.className="card";
-      el.innerHTML = `<div class="row"><b>${r.label||("過去"+days+"日")}</b><span class="muted">avg ${avgTxt}s / n=${r.n ?? "-"}</span></div>`;
+      const elc=el("div",{class:"card"});
+      elc.append(el("div",{class:"row"}, el("b",{}, r.label||(`過去${days}日`)), el("span",{class:"muted"},`avg ${avgTxt}s / n=${r.n ?? "-"}`)));
       if(!(isFinite(avgNum) && avgNum>0) && (r.n>0)){
-        const warn=document.createElement("div"); warn.className="muted";
-        warn.textContent="※ 平均が 0 秒です。admin2 側の RT 集計をご確認ください。";
-        el.append(warn);
+        elc.append(el("div",{class:"muted"},"※ 平均が 0 秒です。admin2 側の RT 集計をご確認ください。"));
       }
-      box.append(el);
+      box.append(elc);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadRT").onclick = loadRT;
+};
 
-/* ====== アナリティクス：アクセス数 ====== */
-async function loadImpressions(){
+// Impressions
+$id("btnLoadImp").onclick = async ()=>{
   const box=$id("impBox"); clearBox(box);
   try{
     const days = Number($id("days_imp").value||7);
     const grain = $id("grain").value;
     const j = await callAdmin2(`?view=impressions&days=${days}&grain=${grain}`);
     const res = j.data||[];
-    if(!res.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    if(!res.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     function bucketToJSTLabel(b){
       const s = String(b);
       const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):?(\d{2})?$/);
@@ -470,193 +464,196 @@ async function loadImpressions(){
       return d.toLocaleString('ja-JP',{ timeZone:'Asia/Tokyo', hour12:false });
     }
     for(const r of res){
-      const el=document.createElement("div"); el.className="card";
       const label = bucketToJSTLabel(r.bucket);
-      el.innerHTML = `<div class="row"><b>${label}</b><span class="muted">${r.count} 件</span></div>`;
-      box.append(el);
+      const elc = el("div",{class:"card"});
+      elc.append(el("div",{class:"row"}, el("b",{},label), el("span",{class:"muted"},`${r.count} 件`)));
+      box.append(elc);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadImp").onclick = loadImpressions;
+};
 
-/* ====== アナリティクス：デッキ別投票数 ====== */
-async function loadVBD(){
+// VBD
+$id("btnLoadVBD").onclick = async ()=>{
   const box=$id("vbdBox"); clearBox(box);
   try{
     const days = Number($id("days_vbd").value||7);
     const limit= Number($id("vbd_limit").value||100);
     const j = await callAdmin2(`?view=votes_deck&days=${days}&limit=${limit}`);
     const res = j.data||[];
-    if(!res.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    if(!res.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     for(const r of res){
-      const el=document.createElement("div"); el.className="card";
-      const name = r.deck_name || r.source_url || r.deck_id;
-      el.innerHTML = `<div class="row"><a class="link" target="_blank" href="${r.source_url}">${name}</a><span class="pill mono">ID ${r.deck_id}</span><span class="muted">votes ${r.votes}</span></div>`;
-      box.append(el);
+      const elc=el("div",{class:"card"});
+      elc.append(el("div",{class:"row"},
+        el("a",{class:"link",target:"_blank",rel:"noopener noreferrer",href:r.source_url}, r.deck_name || r.source_url || r.deck_id),
+        el("span",{class:"pill mono"},`ID ${r.deck_id}`),
+        el("span",{class:"muted"},`votes ${r.votes}`)
+      ));
+      box.append(elc);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadVBD").onclick = loadVBD;
+};
 
-/* ====== ブロック ====== */
+// Blocklist
+async function postBlockIp(ip){ if(!ip) return; try{ await callAdmin2("",{method:"POST",body:{action:"block_ip",ip}}); loadBlocklist(); }catch(e){ alert(e.message); } }
+async function postUnblockIp(ip, row){ try{ await callAdmin2("",{method:"POST",body:{action:"unblock_ip",ip}}); row.remove(); }catch(e){ alert(e.message); } }
+async function postBlockSession(session_id){ if(!session_id) return; try{ await callAdmin2("",{method:"POST",body:{action:"block_session",session_id}}); loadBlocklist(); }catch(e){ alert(e.message); } }
+async function postUnblockSession(session_id, row){ try{ await callAdmin2("",{method:"POST",body:{action:"unblock_session",session_id}}); row.remove(); }catch(e){ alert(e.message); } }
+
 async function loadBlocklist(){
   const box=$id("blocklist"); clearBox(box);
   try{
     const j = await callAdmin2(`?view=blocklist`);
     const ips = j.ips||[], sids=j.sessions||[];
-    const ipCard=document.createElement("div"); ipCard.className="card";
-    ipCard.innerHTML="<h3>IP</h3>";
-    const ipList=document.createElement("div"); ipList.className="grid";
+    const ipCard=el("div",{class:"card"}); ipCard.append(el("h3",{},"IP"));
+    const ipList=el("div",{class:"grid"});
     for(const r of ips){
-      const row=document.createElement("div"); row.className="row";
-      row.innerHTML=`<span class="mono">${r.ip}</span>`;
-      const un=document.createElement("button"); un.textContent="解除"; un.onclick=()=> postUnblockIp(r.ip,row);
+      const row=el("div",{class:"row"});
+      row.append(el("span",{class:"mono"}, r.ip));
+      const un=el("button",{},"解除"); un.onclick=()=> postUnblockIp(r.ip,row);
       row.append(un); ipList.append(row);
     }
-    const addRow=document.createElement("div"); addRow.className="row";
-    const ipIn=document.createElement("input"); ipIn.placeholder="IP";
-    const add=document.createElement("button"); add.textContent="IPブロック"; add.onclick=()=> postBlockIp(ipIn.value, ipList);
+    const addRow=el("div",{class:"row"});
+    const ipIn=el("input",{placeholder:"IP"});
+    const add=el("button",{},"IPブロック"); add.onclick=()=> postBlockIp(ipIn.value, ipList);
     addRow.append(ipIn,add); ipCard.append(ipList,addRow);
 
-    const sidCard=document.createElement("div"); sidCard.className="card";
-    sidCard.innerHTML="<h3>Session</h3>";
-    const sidList=document.createElement("div"); sidList.className="grid";
+    const sidCard=el("div",{class:"card"}); sidCard.append(el("h3",{},"Session"));
+    const sidList=el("div",{class:"grid"});
     for(const r of sids){
-      const row=document.createElement("div"); row.className="row";
-      row.innerHTML=`<span class="mono">${r.session_id}</span>`;
-      const un=document.createElement("button"); un.textContent="解除"; un.onclick=()=> postUnblockSession(r.session_id,row);
+      const row=el("div",{class:"row"});
+      row.append(el("span",{class:"mono"}, r.session_id));
+      const un=el("button",{},"解除"); un.onclick=()=> postUnblockSession(r.session_id,row);
       row.append(un); sidList.append(row);
     }
-    const addRow2=document.createElement("div"); addRow2.className="row";
-    const sidIn=document.createElement("input"); sidIn.placeholder="Session";
-    const add2=document.createElement("button"); add2.textContent="Sessionブロック"; add2.onclick=()=> postBlockSession(sidIn.value, sidList);
+    const addRow2=el("div",{class:"row"});
+    const sidIn=el("input",{placeholder:"Session"});
+    const add2=el("button",{},"Sessionブロック"); add2.onclick=()=> postBlockSession(sidIn.value, sidList);
     addRow2.append(sidIn,add2); sidCard.append(sidList,addRow2);
 
     box.append(ipCard,sidCard);
   }catch(e){ JErr(box,e); }
 }
-async function postBlockIp(ip){ if(!ip) return; try{ await callAdmin2("",{method:"POST",body:{action:"block_ip",ip}}); loadBlocklist(); }catch(e){ alert(e.message); } }
-async function postUnblockIp(ip, row){ try{ await callAdmin2("",{method:"POST",body:{action:"unblock_ip",ip}}); row.remove(); }catch(e){ alert(e.message); } }
-async function postBlockSession(session_id){ if(!session_id) return; try{ await callAdmin2("",{method:"POST",body:{action:"block_session",session_id}}); loadBlocklist(); }catch(e){ alert(e.message); } }
-async function postUnblockSession(session_id, row){ try{ await callAdmin2("",{method:"POST",body:{action:"unblock_session",session_id}}); row.remove(); }catch(e){ alert(e.message); } }
 $id("btnLoadBL").onclick = loadBlocklist;
 
-/* ====== ユーザー上位 ====== */
-async function loadReporters(){
+// Reporters
+$id("btnLoadRep").onclick = async ()=>{
   const box=$id("reporters"); clearBox(box);
   try{
     const days=Number($id("days_rep").value||7), limit=Number($id("limit_rep").value||100);
     const j=await callAdmin2(`?view=reporters&days=${days}&limit=${limit}`);
     const data=j.data||[];
-    if(!data.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    if(!data.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     for(const r of data){
-      const el=document.createElement("div"); el.className="card";
-      el.innerHTML=`<div class="row"><span class="mono">${r.ip||"(no ip)"} / ${r.session_id||"(no session)"}</span><span class="muted">件数 ${r.count} / 最終 ${fmtDate(r.last)}</span></div>`;
-      const btns=document.createElement("div"); btns.className="btns";
-      if(r.ip){ const b=document.createElement("button"); b.textContent=r.blocked_ip?"IP解除":"IPブロック"; b.onclick=()=> (r.blocked_ip?postUnblockIp(r.ip,el):postBlockIp(r.ip)); btns.append(b); }
-      if(r.session_id){ const b2=document.createElement("button"); b2.textContent=r.blocked_session?"Session解除":"Sessionブロック"; b2.onclick=()=> (r.blocked_session?postUnblockSession(r.session_id,el):postBlockSession(r.session_id)); btns.append(b2); }
-      el.append(btns); box.append(el);
+      const elc=el("div",{class:"card"});
+      elc.append(el("div",{class:"row"},
+        el("span",{class:"mono"}, `${r.ip||"(no ip)"} / ${r.session_id||"(no session)"}`),
+        el("span",{class:"muted"}, `件数 ${r.count} / 最終 ${fmtDate(r.last)}`)
+      ));
+      const btns=el("div",{class:"btns"});
+      if(r.ip){ const b=el("button",{}, r.blocked_ip?"IP解除":"IPブロック"); b.onclick=()=> (r.blocked_ip?postUnblockIp(r.ip,elc):postBlockIp(r.ip)); btns.append(b); }
+      if(r.session_id){ const b2=el("button",{}, r.blocked_session?"Session解除":"Sessionブロック"); b2.onclick=()=> (r.blocked_session?postUnblockSession(r.session_id,elc):postBlockSession(r.session_id)); btns.append(b2); }
+      elc.append(btns); box.append(elc);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadRep").onclick = loadReporters;
+};
 
-async function loadRegistrants(){
+// Registrants
+$id("btnLoadReg").onclick = async ()=>{
   const box=$id("registrants"); clearBox(box);
   try{
     const days=Number($id("days_reg").value||7), limit=Number($id("limit_reg").value||100);
     const j=await callAdmin2(`?view=registrants&days=${days}&limit=${limit}`);
     const data=j.data||[];
-    if(!data.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    if(!data.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     for(const r of data){
-      const el=document.createElement("div"); el.className="card";
-      el.innerHTML=`<div class="row"><span class="mono">${r.ip||"(no ip)"} / ${r.session_id||"(no session)"}</span><span class="muted">件数 ${r.count} / 最終 ${fmtDate(r.last)}</span></div>`;
-      const btns=document.createElement("div"); btns.className="btns";
-      if(r.ip){ const b=document.createElement("button"); b.textContent=r.blocked_ip?"IP解除":"IPブロック"; b.onclick=()=> (r.blocked_ip?postUnblockIp(r.ip,el):postBlockIp(r.ip)); btns.append(b); }
-      if(r.session_id){ const b2=document.createElement("button"); b2.textContent=r.blocked_session?"Session解除":"Sessionブロック"; b2.onclick=()=> (r.blocked_session?postUnblockSession(r.session_id,el):postBlockSession(r.session_id)); btns.append(b2); }
-      el.append(btns); box.append(el);
+      const elc=el("div",{class:"card"});
+      elc.append(el("div",{class:"row"},
+        el("span",{class:"mono"}, `${r.ip||"(no ip)"} / ${r.session_id||"(no session)"}`),
+        el("span",{class:"muted"}, `件数 ${r.count} / 最終 ${fmtDate(r.last)}`)
+      ));
+      const btns=el("div",{class:"btns"});
+      if(r.ip){ const b=el("button",{}, r.blocked_ip?"IP解除":"IPブロック"); b.onclick=()=> (r.blocked_ip?postUnblockIp(r.ip,elc):postBlockIp(r.ip)); btns.append(b); }
+      if(r.session_id){ const b2=el("button",{}, r.blocked_session?"Session解除":"Sessionブロック"); b2.onclick=()=> (r.blocked_session?postUnblockSession(r.session_id,elc):postBlockSession(r.session_id)); btns.append(b2); }
+      elc.append(btns); box.append(elc);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadReg").onclick = loadRegistrants;
+};
 
-/* ====== 復旧 ====== */
-async function loadDeleted(){
+// Deleted
+$id("btnLoadDel").onclick = async ()=>{
   const box=$id("deletedList"); clearBox(box);
   try{
     const days=Number($id("days_del").value||30), limit=Number($id("limit_del").value||100);
     const j=await callAdmin2(`?view=deleted_list&days=${days}&limit=${limit}`);
     const data=j.data||[];
-    if(!data.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    if(!data.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     for(const r of data){
-      const el=document.createElement("div"); el.className="card";
-      const a=document.createElement("a"); a.href=r.source_url; a.target="_blank"; a.className="link"; a.textContent=r.deck_name||r.source_url||r.deck_id||"(deleted)";
-      const row1=document.createElement("div"); row1.className="row";
-      row1.append(a); row1.insertAdjacentHTML("beforeend", `<span class="pill mono">deck ${r.deck_id||"-"}</span>`);
-      const row2=document.createElement("div"); row2.className="row muted";
-      row2.textContent=`削除: ${fmtDate(r.deleted_at)} / 理由: ${r.reason||"-"} / by ${r.deleted_by||"-"}`;
-      const btn=document.createElement("button"); btn.className="ok"; btn.textContent="復旧";
-      btn.onclick=async()=>{ try{ await callAdmin2("",{method:"POST",body:{action:"restore_deck", log_id:r.id}}); el.remove(); }catch(e){ alert("復旧失敗: "+e.message); } };
-      el.append(row1,row2,btn); box.append(el);
+      const elc=el("div",{class:"card"});
+      const row1=el("div",{class:"row"});
+      row1.append(
+        el("a",{href:r.source_url,target:"_blank",rel:"noopener noreferrer",class:"link"}, r.deck_name||r.source_url||r.deck_id||"(deleted)"),
+        el("span",{class:"pill mono"},`deck ${r.deck_id||"-"}`)
+      );
+      const row2=el("div",{class:"row muted"}, `削除: ${fmtDate(r.deleted_at)} / 理由: ${r.reason||"-"} / by ${r.deleted_by||"-"}`);
+      const btn=el("button",{class:"ok"},"復旧");
+      btn.onclick=async()=>{ try{ await callAdmin2("",{method:"POST",body:{action:"restore_deck", log_id:r.id}}); elc.remove(); }catch(e){ alert("復旧失敗: "+e.message); } };
+      elc.append(row1,row2,btn); box.append(elc);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadDel").onclick = loadDeleted;
+};
 
-/* ====== 保留削除 ====== */
-async function loadPending(){
+// Pending
+$id("btnLoadPending").onclick = async ()=>{
   const box=$id("pendingList"); clearBox(box);
   try{
     const j=await callAdmin2(`?view=pending_deletes`);
     const list=j.data||[];
-    if(!list.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    if(!list.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     for(const r of list){
-      const el=document.createElement("div"); el.className="card";
-      el.innerHTML=`
-        <div class="row">
-          <a class="link" target="_blank" href="${r.source_url}">${r.deck_name||r.source_url||r.id}</a>
-          <span class="pill mono">ID ${r.id}</span>
-        </div>
-        <div class="muted">保留時刻: ${fmtDate(r.pending_delete_at)} / 理由: ${r.pending_delete_reason||"-"}</div>
-      `;
-      const btns=document.createElement("div"); btns.className="btns";
-      const ok=document.createElement("button"); ok.className="danger"; ok.textContent="削除を確定"; ok.onclick=async()=>{
-        try{ await callAdmin2("",{method:"POST", body:{action:"confirm_delete_deck", deck_id:r.id}}); el.remove(); }catch(e){ alert(e.message); }
+      const elc=el("div",{class:"card"});
+      elc.append(
+        el("div",{class:"row"},
+          el("a",{class:"link",target:"_blank",rel:"noopener noreferrer",href:r.source_url}, r.deck_name||r.source_url||r.id),
+          el("span",{class:"pill mono"},`ID ${r.id}`)
+        ),
+        el("div",{class:"muted"}, `保留時刻: ${fmtDate(r.pending_delete_at)} / 理由: ${r.pending_delete_reason||"-"}`)
+      );
+      const btns=el("div",{class:"btns"});
+      const ok=el("button",{class:"danger"},"削除を確定"); ok.onclick=async()=>{
+        try{ await callAdmin2("",{method:"POST", body:{action:"confirm_delete_deck", deck_id:r.id}}); elc.remove(); }catch(e){ alert(e.message); }
       };
-      const cancel=document.createElement("button"); cancel.textContent="保留を取消"; cancel.onclick=async()=>{
-        try{ await callAdmin2("",{method:"POST", body:{action:"cancel_pending_delete", deck_id:r.id}}); el.remove(); }catch(e){ alert(e.message); }
+      const cancel=el("button",{},"保留を取消"); cancel.onclick=async()=>{
+        try{ await callAdmin2("",{method:"POST", body:{action:"cancel_pending_delete", deck_id:r.id}}); elc.remove(); }catch(e){ alert(e.message); }
       };
-      btns.append(ok,cancel); el.append(btns); box.append(el);
+      btns.append(ok,cancel); elc.append(btns); box.append(elc);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadPending").onclick = loadPending;
+};
 
-/* ====== スパイク検知 ====== */
-async function loadSpikes(){
+// Spikes
+$id("btnLoadSpikes").onclick = async ()=>{
   const box=$id("spikeList"); clearBox(box);
   try{
     const hours = Number($id("hours_sp").value||24);
     const j=await callAdmin2(`?view=spikes&hours=${hours}`);
     const data=j.data||[];
-    if(!data.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    if(!data.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     for(const r of data){
-      const el=document.createElement("div"); el.className="card";
-      el.innerHTML = `<div class="row">
-        <span class="mono">${r.ip||"-"} / ${r.sid||"-"}</span>
-        <span class="muted">通報 ${r.reports} / 登録 ${r.regs}</span>
-      </div>`;
-      const btns=document.createElement("div"); btns.className="btns";
-      if(r.ip){ const b=document.createElement("button"); b.textContent="IPブロック"; b.onclick=()=> postBlockIp(r.ip); btns.append(b); }
-      if(r.sid){ const b2=document.createElement("button"); b2.textContent="Sessionブロック"; b2.onclick=()=> postBlockSession(r.sid); btns.append(b2); }
-      el.append(btns); box.append(el);
+      const elc=el("div",{class:"card"});
+      elc.append(el("div",{class:"row"},
+        el("span",{class:"mono"}, `${r.ip||"-"} / ${r.sid||"-"}`),
+        el("span",{class:"muted"}, `通報 ${r.reports} / 登録 ${r.regs}`)
+      ));
+      const btns=el("div",{class:"btns"});
+      if(r.ip){ const b=el("button",{},"IPブロック"); b.onclick=()=> postBlockIp(r.ip); btns.append(b); }
+      if(r.sid){ const b2=el("button",{},"Sessionブロック"); b2.onclick=()=> postBlockSession(r.sid); btns.append(b2); }
+      elc.append(btns); box.append(elc);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadSpikes").onclick = loadSpikes;
+};
 
-/* ====== 理由トップ ====== */
-async function loadReasonTop(){
+// Reason Top
+$id("btnLoadReasonTop").onclick = async ()=>{
   const box=$id("reasonTop"); clearBox(box);
   try{
     const days=Number($id("days_reason").value||7);
@@ -665,44 +662,47 @@ async function loadReasonTop(){
     if(deck) qs.set("deck_id", deck);
     const j=await callAdmin2(`?${qs.toString()}`);
     const list=j.data||[];
-    if(!list.length){ box.innerHTML=`<div class="muted">0件</div>`; return; }
+    if(!list.length){ box.append(el("div",{class:"muted"},"0件")); return; }
     for(const r of list){
-      const el=document.createElement("div"); el.className="card";
-      el.innerHTML = `<div class="row"><b>${r.label}</b><span class="muted">(${r.key})</span><span class="pill mono">${r.count}</span></div>`;
-      box.append(el);
+      const elc=el("div",{class:"card"});
+      elc.append(el("div",{class:"row"},
+        el("b",{}, r.label),
+        el("span",{class:"muted"}, `(${r.key})`),
+        el("span",{class:"pill mono"}, String(r.count))
+      ));
+      box.append(elc);
     }
   }catch(e){ JErr(box,e); }
-}
-$id("btnLoadReasonTop").onclick = loadReasonTop;
+};
 
-/* ====== マスター編集（追加） ====== */
+// Masters
 let THEMES=[], TAGS=[], REASONS=[];
 function renderChips(){
   const tc=$id("themeChips"); tc.innerHTML="";
   THEMES.forEach(v=>{
-    const s=document.createElement("span"); s.className="chip"; s.textContent=v+" ";
-    const x=document.createElement("span"); x.className="x"; x.textContent="×";
+    const s=el("span",{class:"chip"}, v+" ");
+    const x=el("span",{class:"x"},"×");
     x.onclick=()=>{ THEMES=THEMES.filter(a=>a!==v); renderChips(); };
     s.appendChild(x); tc.appendChild(s);
   });
   const gc=$id("tagChips"); gc.innerHTML="";
   TAGS.forEach(v=>{
-    const s=document.createElement("span"); s.className="chip"; s.textContent=v+" ";
-    const x=document.createElement("span"); x.className="x"; x.textContent="×";
+    const s=el("span",{class:"chip"}, v+" ");
+    const x=el("span",{class:"x"},"×");
     x.onclick=()=>{ TAGS=TAGS.filter(a=>a!==v); renderChips(); };
     s.appendChild(x); gc.appendChild(s);
   });
   const rc=$id("reasonChips"); rc.innerHTML="";
   REASONS.forEach(v=>{
-    const s=document.createElement("span"); s.className="chip"; s.textContent=v+" ";
-    const x=document.createElement("span"); x.className="x"; x.textContent="×";
+    const s=el("span",{class:"chip"}, v+" ");
+    const x=el("span",{class:"x"},"×");
     x.onclick=()=>{ REASONS=REASONS.filter(a=>a!==v); renderChips(); };
     s.appendChild(x); rc.appendChild(s);
   });
 }
 $id("themeAdd").onclick = ()=>{ const v=$id("themeInput").value.trim(); if(v && !THEMES.includes(v)) THEMES.push(v); $id("themeInput").value=""; renderChips(); };
-$id("tagAdd").onclick =   ()=>{ const v=$id("tagInput").value.trim();   if(v && !TAGS.includes(v))   TAGS.push(v);   $id("tagInput").value="";   renderChips(); };
-$id("reasonAdd").onclick =()=>{ const v=$id("reasonInput").value.trim();if(v && !REASONS.includes(v))REASONS.push(v);$id("reasonInput").value="";renderChips(); };
+$id("tagAdd").onclick   = ()=>{ const v=$id("tagInput").value.trim();   if(v && !TAGS.includes(v))   TAGS.push(v);   $id("tagInput").value="";   renderChips(); };
+$id("reasonAdd").onclick= ()=>{ const v=$id("reasonInput").value.trim();if(v && !REASONS.includes(v))REASONS.push(v);$id("reasonInput").value="";renderChips(); };
 
 async function loadMasters(){
   try{
@@ -722,7 +722,7 @@ async function saveMasters(){
 $id("btnLoadMasters").onclick = loadMasters;
 $id("btnSaveMasters").onclick = saveMasters;
 
-/* 初期ロード：設定だけ */
+// 初期ロード：設定だけ
 loadSettings();
 </script>
 </body>
