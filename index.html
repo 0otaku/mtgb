@@ -776,41 +776,21 @@ function showReasonPanel(){
   reasonPanel.style.display = "flex";
   setTimeout(()=>{ reasonPanel.style.display="none"; }, 10000);
 }
-// 置き換え：投票理由の保存（Edge→RPC→直書きの3段fallback）
 async function recordReason(name, btn){
-  if (!currentDeck || !name) return;
-
-  // 二重クリック防止（任意）
-  const prevDisabled = btn?.disabled;
-  if (btn) btn.disabled = true;
-
-  let ok = false;
+  if (!currentDeck) return;
   try{
-    // ① Edge Functions 経由（CORS回避）
+    let ok=false;
     try{
-      const { data, error } = await sb.functions.invoke("reason-add", {
-        body: { deck_id: currentDeck.id, session_id: sid, reason: name }
-      });
-      ok = !error && data?.ok !== false;
+      const res = await fetch(FN_REASON_ADD, { method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, reason: name }) });
+      const j = await res.json().catch(()=> ({}));
+      ok = res.ok && j?.ok!==false;
     }catch{}
-
-    // ② 直書きフォールバック（権限ある環境向け）
-    if (!ok){
-      const ins = await sb.from("vote_reasons").insert({
-        deck_id: currentDeck.id, session_id: sid, reason: name
-      });
-      ok = !ins.error;
+    if(!ok){
+      await sb.from("vote_reasons").insert({ deck_id: currentDeck.id, session_id: sid, reason: name });
+      ok=true;
     }
-
-    if (ok){
-      if (btn) btn.classList.add("on");
-      addExtraXPOnce(); // 追加XPは一度だけ
-    }else{
-      toast("理由の保存に失敗しました。（時間を置いて再試行してください）");
-    }
-  }finally{
-    if (btn) btn.disabled = prevDisabled ?? false;
-  }
+    if(ok){ btn.classList.add("on"); addExtraXPOnce(); }
+  }catch{}
 }
 
 // タイトル右のタグ表示（Edge→新→旧）
@@ -1349,20 +1329,29 @@ async function openTagsModal(deck_id){
   });
 }
 
+
 async function openReasonsModal(deck_id){
   let rows = [];
 
-  // ① Edge Functions 経由（CORS回避。まずこれ）
+  // --- 0) Edge Functions（invoke優先。返却形の揺れに対応） ---
   try{
-    const { data, error } = await sb.functions.invoke("reason-sum", {
-      body: { deck_id, limit: 50 }
-    });
-    if (!error && data?.ok !== false && Array.isArray(data?.data)) {
-      rows = data.data; // { reason, cnt }[]
+    const { data, error } = await sb.functions.invoke("reason-sum", { body: { deck_id, limit: 50 } });
+    if (!error && data){
+      const payload = data.data ?? data.reasons ?? data;
+      if (Array.isArray(payload)){
+        // 文字列配列 or {reason,cnt}[] の両対応
+        if (typeof payload[0] === "string"){
+          const m = new Map();
+          for(const r of payload){ m.set(r, (m.get(r)||0)+1); }
+          rows = [...m.entries()].map(([reason,cnt])=>({reason, cnt}));
+        }else{
+          rows = payload.map(x => ({ reason: String(x.reason ?? x.name ?? "その他"), cnt: Number(x.cnt ?? x.count ?? 0) }));
+        }
+      }
     }
   }catch{}
 
-  // ② 直読 → JS集計（権限がある場合のフォールバック）
+  // --- 1) vote_reasons 直読 → JS集計 ---
   if (rows.length === 0){
     try{
       const { data: list, error } = await sb
@@ -1370,39 +1359,34 @@ async function openReasonsModal(deck_id){
         .select("reason")
         .eq("deck_id", deck_id)
         .limit(10000);
-      if (!error && Array.isArray(list)){
-        const map = new Map();
-        for (const r of list){ const k = r?.reason || "その他"; map.set(k,(map.get(k)||0)+1); }
-        rows = [...map.entries()]
-          .map(([reason,cnt]) => ({ reason, cnt }))
-          .sort((a,b)=> b.cnt - a.cnt)
-          .slice(0,50);
+      if(!error && Array.isArray(list)){
+        const m = new Map();
+        for(const r of list){ const k=(r?.reason||"その他"); m.set(k,(m.get(k)||0)+1); }
+        rows = [...m.entries()].map(([reason,cnt])=>({reason,cnt})).sort((a,b)=>b.cnt-a.cnt).slice(0,50);
       }
     }catch{}
   }
 
-  // ③ RPC フォールバック（用意がある環境だけでヒット）
+  // --- 2) RPC フォールバック ---
   if (rows.length === 0){
     try{
       const { data, error } = await sb.rpc("reason_sum_by_deck", { p_deck: deck_id, p_limit: 50 });
-      if (!error && Array.isArray(data)){
-        rows = data
-          .map(r => ({ reason: r.reason, cnt: Number(r.cnt)||0 }))
-          .sort((a,b)=> b.cnt - a.cnt);
+      if(!error && Array.isArray(data)){
+        rows = data.map(r => ({ reason: r.reason, cnt: Number(r.cnt)||0 })).sort((a,b)=>b.cnt-a.cnt);
       }
     }catch{}
   }
 
   // ===== 表示 =====
   const body = document.createElement("div");
-  if (rows.length === 0){
+  if(rows.length===0){
     body.textContent = "まだ理由がありません。";
   }else{
-    for (const r of rows){
+    for(const r of rows){
       const line = document.createElement("div");
-      line.style.display = "flex";
-      line.style.justifyContent = "space-between";
-      line.style.padding = "4px 0";
+      line.style.display="flex";
+      line.style.justifyContent="space-between";
+      line.style.padding="4px 0";
       line.innerHTML = `<span>${r.reason}</span><b>${r.cnt}</b>`;
       body.appendChild(line);
     }
