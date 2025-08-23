@@ -158,6 +158,129 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 .modal header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border)}
 .modal .body{padding:12px 14px;max-height:60vh;overflow:auto}
 .modal .foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 14px;border-top:1px solid var(--border)}
+
+/* ====== 見た目を小さく控えめに（上書き） ====== */
+
+/* ヘッダー右の表示タグ */
+.tag-chips{ gap:4px; }
+.tagchip{
+  font-size:11px;               /* 小さく */
+  padding:2px 6px;              /* 薄く */
+  border-radius:6px;           /* 角Rも控えめ */
+  line-height:1.2;
+  background:#fafafa;
+  border-color:#e6e6e6;
+  color:#475569;
+}
+.tagchip.theme{
+  background:#f6f8ff;
+  border-color:#dbe4ff;
+}
+
+/* 登録/編集モーダルの選択チップ */
+.chip-sel{
+  font-size:11px;
+  padding:5px 8px;
+  border-radius:12px;
+}
+
+/* スマホではさらに控えめ */
+@media (max-width: 680px){
+  .tagchip{ font-size:10px; padding:2px 5px; border-radius:4px; }
+  .chip-sel{ font-size:10px; padding:4px 6px; border-radius:4px; }
+  .tag-chips{ gap:3px; }
+}
+
+/* === ヘッダー右ボタンをモバイルで小さく・同一行に収める === */
+header { align-items: center; }
+.title { flex: 1 1 auto; min-width: 0; }   /* 左側を可変で広げる */
+#openSheet { flex: 0 0 auto; white-space: nowrap; }
+
+@media (max-width: 680px){
+  #openSheet{
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    line-height: 1.1;
+  }
+  .site{ font-size: 18px; }                 /* タイトルも少しだけ詰める */
+  .deck-meta{ font-size: 12px; gap: 8px; }  /* メタ行をコンパクトに */
+}
+
+/* テーマタグを控えめ強調（背景ちょい濃い & 枠色も少し強め） */
+.tagchip.theme{
+  /* Fallback（color-mix未対応ブラウザ用） */
+  background:#eef2ff;         /* 元の #f6f8ff より少しだけ濃い */
+  border-color:#cfd8ff;
+
+  /* 主要ブラウザ用：サイトのアクセント色をほんのり混ぜる */
+  background: color-mix(in srgb, var(--accent) 16%, white);
+  border-color: color-mix(in srgb, var(--accent) 42%, white);
+
+  /* うるさくならない程度の内側ハイライト（任意） */
+  box-shadow: inset 0 0 0 1px rgba(99,102,241,.04);
+}
+
+/* ===== SPレイアウト: 右上にボタン固定 + タグ4個を横一列 ===== */
+@media (max-width: 680px){
+  /* headerを2カラムに（左：タイトル/タグ、右：ボタン） */
+  header{
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 8px;
+  }
+  #openSheet{
+    justify-self: end;
+    align-self: start;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    line-height: 1.1;
+  }
+  .title{ min-width: 0; }          /* 左カラムを縮められるように */
+  .deck-meta{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+/* ===== SP: ボタンは右上に固定、タグは自動幅＋必要なら改行 ===== */
+@media (max-width: 680px){
+  header{
+    position: relative;
+    display: block;
+  }
+  #openSheet{
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    line-height: 1.1;
+    z-index: 1;
+  }
+
+  /* タグ列は全幅を使い、入らなければ折り返す */
+  #deckTags.tag-chips{
+    display: flex;
+    flex-wrap: wrap;             /* ← ここで改行OKに */
+    gap: 4px;
+    width: 100%;
+    overflow: visible;
+  }
+  #deckTags .tagchip{
+    flex: 0 0 auto;              /* 均等幅を解除＝自動幅 */
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;     /* 長いラベルは省略表示 */
+  }
+}
+
 </style>
 </head>
 <body>
@@ -170,7 +293,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
         <span id="deckTags" class="tag-chips"></span>
       </div>
     </div>
-    <button id="openSheet" class="small-btn">登録 / 削除</button>
+    <button id="openSheet" class="small-btn">登録 / 確認</button>
   </header>
 
   <div class="grid">
@@ -204,7 +327,7 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
         <div class="skip-row">
           <button class="skip" id="skipBtn" title="このデッキは評価しない">回答しない</button>
         </div>
-        <div class="hint">※ 同じデッキは1つだけ記録（あとから変更できます）</div>
+        <div class="hint">※ 同じデッキは1つだけ記録（変更可）</div>
       </div>
 
       <div class="results" id="results">
@@ -267,15 +390,16 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 <div class="sheet-backdrop" id="backdrop"></div>
 <aside class="sheet" id="sheet" aria-modal="true" role="dialog">
   <header>
-    <div style="font-weight:700">登録 / 削除</div>
+    <div style="font-weight:700">登録 / 確認</div>
     <button id="closeSheet" class="small-btn right">閉じる</button>
   </header>
   <div class="body">
     <div class="tabs" role="tablist">
-      <button class="tab active" data-tab="reg" role="tab" aria-selected="true">登録</button>
-      <button class="tab" data-tab="del" role="tab" aria-selected="false">削除（通報）</button>
-      <button class="tab" data-tab="mine" role="tab" aria-selected="false">自分の登録</button>
-    </div>
+  <button class="tab active" data-tab="reg"  role="tab" aria-selected="true">登録</button>
+  <button class="tab"         data-tab="mine" role="tab" aria-selected="false">自分のデッキ</button>
+  <button class="tab"         data-tab="del"  role="tab" aria-selected="false">削除依頼</button>
+</div>
+
 
     <div id="pane-reg">
       <div class="note">
@@ -289,9 +413,9 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 
       <!-- ▼ 追加：登録時のタグ入力（任意 / 自由タグは最大3件） -->
       <div style="margin-top:10px">
-        <div class="note" style="margin-bottom:6px">任意でテーマ/タグを付けられます（後から変更可）</div>
+        <div class="note" style="margin-bottom:6px">任意でタグを付けられます（変更可）</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-          <label for="regTheme" class="note">テーマ:</label>
+          <label for="regTheme" class="note">デッキの狙い:</label>
           <select id="regTheme"></select>
         </div>
         <div class="note" style="margin:6px 0 4px">タグ（最大3つ / 複数可）:</div>
@@ -354,10 +478,22 @@ const FN_REASON_ADD = `${SUPABASE_URL}/functions/v1/reason-add`;
 const FN_REASON_SUM = `${SUPABASE_URL}/functions/v1/reason-sum`;
 const APP_URL       = `${location.origin}${location.pathname}`;
 
+// ===== Supabase 設定 =====
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession:false, autoRefreshToken:false },
   global: { headers: { apikey: SUPABASE_ANON } }
 });
+
+// 旧/新スキーマを一度だけ判定してキャッシュ（createClient の直後に置く）
+const __SCHEMA = { kind: null };
+async function detectSchema(){
+  if (__SCHEMA.kind) return __SCHEMA.kind;
+  try{
+    const q = await sb.from("deck_tags").select("tag_key").limit(1);
+    if (!q.error) { __SCHEMA.kind = "new"; return "new"; }
+  }catch{}
+  __SCHEMA.kind = "old"; return "old";
+}
 
 /* ===== Util ===== */
 const $ = (q)=>document.querySelector(q);
@@ -640,52 +776,119 @@ function showReasonPanel(){
   reasonPanel.style.display = "flex";
   setTimeout(()=>{ reasonPanel.style.display="none"; }, 10000);
 }
+// 置き換え：投票理由の保存（Edge→RPC→直書きの3段fallback）
 async function recordReason(name, btn){
-  if (!currentDeck) return;
+  if (!currentDeck || !name) return;
+
+  // 二重クリック防止（任意）
+  const prevDisabled = btn?.disabled;
+  if (btn) btn.disabled = true;
+
+  let ok = false;
   try{
-    let ok=false;
+    // ① Edge Functions 経由（CORS回避）
     try{
-      const res = await fetch(FN_REASON_ADD, { method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, reason: name }) });
-      const j = await res.json().catch(()=> ({}));
-      ok = res.ok && j?.ok!==false;
+      const { data, error } = await sb.functions.invoke("reason-add", {
+        body: { deck_id: currentDeck.id, session_id: sid, reason: name }
+      });
+      ok = !error && data?.ok !== false;
     }catch{}
-    if(!ok){
-      await sb.from("vote_reasons").insert({ deck_id: currentDeck.id, session_id: sid, reason: name });
-      ok=true;
+
+    // ② 直書きフォールバック（権限ある環境向け）
+    if (!ok){
+      const ins = await sb.from("vote_reasons").insert({
+        deck_id: currentDeck.id, session_id: sid, reason: name
+      });
+      ok = !ins.error;
     }
-    if(ok){ btn.classList.add("on"); addExtraXPOnce(); }
-  }catch{}
+
+    if (ok){
+      if (btn) btn.classList.add("on");
+      addExtraXPOnce(); // 追加XPは一度だけ
+    }else{
+      toast("理由の保存に失敗しました。（時間を置いて再試行してください）");
+    }
+  }finally{
+    if (btn) btn.disabled = prevDisabled ?? false;
+  }
 }
 
-/* ===== タイトル右のタグ表示（まず Edge / 次に REST テーブル直読） ===== */
-function tagChip(txt, kind){ const el = document.createElement("span"); el.className="tagchip "+(kind||"free"); el.textContent = txt; return el; }
+// タイトル右のタグ表示（Edge→新→旧）
+function tagChip(txt, kind){
+  const el = document.createElement("span");
+  el.className = "tagchip " + (kind || "free");
+  el.textContent = txt;
+  return el;
+}
 
 async function showDeckTags(deck_id){
   const box = $("#deckTags");
-  box.innerHTML="";
-  if(!deck_id) return;
+  box.innerHTML = "";
+  if (!deck_id) return;
 
-  // 1) Edge Function（存在する場合はこれで完結）
+  // 0) Edge（CORS回避のため invoke 優先）
   try{
-    const r = await fetch(FN_GET_TAGS, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
-      body: JSON.stringify({ deck_id })
-    });
-    const j = await r.json().catch(()=> ({}));
-    if (r.ok && j?.ok && j?.data) {
-      if (j.data.theme) box.appendChild(tagChip(j.data.theme, "theme"));
-      for(const t of (j.data.tags||[]).slice(0,3)) box.appendChild(tagChip(t,"free"));
+    const { data, error } = await sb.functions.invoke("get-tags", { body: { deck_id }});
+    if (!error && data?.ok && data?.data){
+      if (data.data.theme) box.appendChild(tagChip(data.data.theme, "theme"));
+      for (const t of (data.data.tags||[]).slice(0,3)) box.appendChild(tagChip(t,"free"));
       return;
     }
   }catch{}
 
-  // 2) REST テーブル直読（deck_tags が公開されている場合のみ）
+  // 1) 新スキーマ（decks.theme_key / deck_tags.tag_key）
   try{
-    const { data } = await sb.from("deck_tags").select("theme,tags").eq("deck_id", deck_id).maybeSingle();
-    if (data) {
-      if (data.theme) box.appendChild(tagChip(data.theme, "theme"));
-      for(const t of (data.tags||[]).slice(0,3)) box.appendChild(tagChip(t,"free"));
+    const [deckRow, tagRows] = await Promise.all([
+      sb.from("decks").select("theme_key").eq("id", deck_id).maybeSingle(),
+      sb.from("deck_tags").select("tag_key").eq("deck_id", deck_id).limit(200)
+    ]);
+
+    const themeKey = deckRow?.data?.theme_key || null;
+    const tagKeys  = (tagRows?.data||[]).map(r=>r?.tag_key).filter(Boolean);
+    const allKeys  = [...new Set([themeKey, ...tagKeys].filter(Boolean))];
+
+    if (allKeys.length){
+      const { data: masters } = await sb
+        .from("app_tags_master").select("key,label,kind").in("key", allKeys).limit(500);
+
+      const byKey   = new Map((masters||[]).map(m => [m.key, m]));
+      const labelOf = (k) => byKey.get(k)?.label || k;
+      const kindOf  = (k) => byKey.get(k)?.kind  || "tag";
+
+      let themeLabel = null, themeResolvedKey = null;
+
+      if (themeKey){ themeLabel = labelOf(themeKey); themeResolvedKey = themeKey; }
+      if (!themeLabel){
+        const tk = tagKeys.find(k => kindOf(k)==="theme");
+        if (tk){ themeLabel = labelOf(tk); themeResolvedKey = tk; }
+      }
+      if (!themeLabel){
+        const tCand = tagKeys.find(k => (MASTER?.themes||[]).includes(labelOf(k)));
+        if (tCand){ themeLabel = labelOf(tCand); themeResolvedKey = tCand; }
+      }
+
+      if (themeLabel) box.appendChild(tagChip(themeLabel, "theme"));
+
+      const tagLabels = tagKeys
+        .filter(k => k !== themeResolvedKey)
+        .filter(k => kindOf(k)==="tag")
+        .map(labelOf);
+
+      for (const lab of [...new Set(tagLabels)].slice(0,3)){
+        box.appendChild(tagChip(lab, "free"));
+      }
+      if (box.children.length) return;
+    }
+  }catch{}
+
+  // 2) 旧スキーマ（deck_tags.theme / deck_tags.tags）
+  try{
+    const q = await sb.from("deck_tags").select("theme,tags").eq("deck_id", deck_id).maybeSingle();
+    if (!q.error && (q.data?.theme || Array.isArray(q.data?.tags))){
+      if (q.data.theme) box.appendChild(tagChip(q.data.theme, "theme"));
+      for (const t of (Array.isArray(q.data.tags)? q.data.tags : []).slice(0,3)){
+        box.appendChild(tagChip(t, "free"));
+      }
     }
   }catch{}
 }
@@ -916,24 +1119,62 @@ function initRegTagsUI(){
 }
 initRegTagsUI();
 
-/* タグ保存（Edge→REST） */
-async function saveTagsForDeck(deck_id, theme, tags){
-  if(!deck_id) return false;
-  // 空なら何もしない
-  if(!(theme) && !(tags && tags.length)) return true;
-  let ok=false;
+// タグ保存（Edge → 明示スキーマ分岐（new/old））
+async function saveTagsForDeck(deck_id, themeLabel, tagLabels){
+  if (!deck_id) return false;
+  const tagsArr = Array.from(new Set(Array.isArray(tagLabels) ? tagLabels : [])).slice(0,3);
+
+  // 0) Edge（動けば終了）
   try{
-    const r = await fetch(FN_SET_TAGS, { method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ deck_id, theme: (theme||null), tags: (tags||[]) }) });
-    const j = await r.json().catch(()=> ({}));
-    ok = r.ok && j?.ok!==false;
+    const { data, error } = await sb.functions.invoke("set-tags", {
+      body: { deck_id, theme: (themeLabel||null), tags: tagsArr }
+    });
+    if (!error && data?.ok !== false) return true;
   }catch{}
-  if(!ok){
+
+  const kind = await detectSchema();
+
+  if (kind === "new"){
     try{
-      await sb.from("deck_tags").upsert({ deck_id, theme: (theme||null), tags: (tags||[]) }).select().maybeSingle();
-      ok = true;
+      // label→key 解決（無ければ label を key として採用）
+      const { data: masters } = await sb.from("app_tags_master").select("key,label,kind").limit(2000);
+      const toKey = (label, needKind)=> {
+        const hit = (masters||[]).find(m => m.kind===needKind && (m.label===label || m.key===label));
+        return hit?.key || label;
+      };
+
+      const tkey = themeLabel ? toKey(themeLabel, "theme") : null;
+      const keys = tagsArr.map(l => toKey(l, "tag"));
+      const rows = [
+        ...(tkey ? [{ deck_id, tag_key: tkey, created_by_session: sid }] : []),
+        ...keys.map(k => ({ deck_id, tag_key: k, created_by_session: sid }))
+      ];
+
+      // 失敗時に消えるのを避けるため、現在値を退避→削除→挿入（挿入失敗時は可能な範囲でロールバック）
+      const before = await sb.from("deck_tags").select("tag_key").eq("deck_id", deck_id);
+      await sb.from("deck_tags").delete().eq("deck_id", deck_id);
+      if (rows.length){
+        const ins = await sb.from("deck_tags").insert(rows);
+        if (ins.error){
+          if (Array.isArray(before.data) && before.data.length){
+            const rb = before.data.map(r=>({ deck_id, tag_key: r.tag_key, created_by_session: sid }));
+            await sb.from("deck_tags").insert(rb);
+          }
+          throw ins.error;
+        }
+      }
+      if (tkey) await sb.from("decks").update({ theme_key: tkey }).eq("id", deck_id);
+      return true;
+    }catch{}
+  }else{
+    try{
+      await sb.from("deck_tags").delete().eq("deck_id", deck_id);
+      await sb.from("deck_tags").insert({ deck_id, theme: (themeLabel||null), tags: tagsArr, created_by_session: sid });
+      return true;
     }catch{}
   }
-  return ok;
+
+  return false;
 }
 
 /* ===== 登録 ===== */
@@ -981,45 +1222,125 @@ $("#delBtn").addEventListener("click", async ()=>{
 $("#reloadMine").addEventListener("click", ()=> loadMine());
 
 async function openTagsModal(deck_id){
-  let theme=null, tags=[];
+  // 取得したテーマ/タグを「ラベル」で保持する
+  let theme = null, tags = [];
+
+  // --- 0) Edge Functions（CORS回避：invokeを最優先） ---
   try{
-    const r = await fetch(FN_GET_TAGS, { method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ deck_id }) });
-    const j = await r.json().catch(()=> ({}));
-    if(r.ok && j?.ok && j?.data){ theme = j.data.theme ?? null; tags = j.data.tags ?? []; }
+    const { data, error } = await sb.functions.invoke("get-tags", { body: { deck_id } });
+    if(!error && data){
+      // 可能性のある返却形に広く対応
+      const payload = data.data ?? data;
+      const t = payload.theme ?? payload.theme_label ?? null;
+      const arr = payload.tags  ?? payload.tag_labels ?? [];
+      if (t) theme = String(t);
+      if (Array.isArray(arr)) tags = arr.map(String);
+    }
   }catch{}
-  if(theme===null){
+
+  // --- 1) 旧スキーマ（deck_tags.theme/tags） ---
+  if (theme===null && tags.length===0){
     try{
       const q = await sb.from("deck_tags").select("theme,tags").eq("deck_id", deck_id).maybeSingle();
-      if(q.data){ theme = q.data.theme||null; tags = Array.isArray(q.data.tags)? q.data.tags: []; }
+      if (!q.error && q.data){
+        theme = q.data.theme || null;
+        tags  = Array.isArray(q.data.tags) ? q.data.tags : [];
+      }
     }catch{}
   }
 
-  const body = document.createElement("div");
-  const themeLabel = document.createElement("div"); themeLabel.textContent="テーマ（1つ）"; themeLabel.style.margin="6px 0 4px"; themeLabel.className="note";
-  const sel = document.createElement("select");
-  sel.innerHTML = `<option value="">未選択</option>` + MASTER.themes.map(v=> `<option value="${v}">${v}</option>`).join("");
-  if(theme && MASTER.themes.includes(theme)) sel.value = theme;
-  body.append(themeLabel, sel);
+  // --- 2) 新スキーマ（decks.theme_key / deck_tags.tag_key） ---
+  if (theme===null && tags.length===0){
+    try{
+      const [deckRow, tagRows] = await Promise.all([
+        sb.from("decks").select("theme_key").eq("id", deck_id).maybeSingle(),
+        sb.from("deck_tags").select("tag_key").eq("deck_id", deck_id).limit(100)
+      ]);
+      const tkey  = deckRow?.data?.theme_key || null;
+      const tkeys = (tagRows?.data||[]).map(r=>r?.tag_key).filter(Boolean);
+      const all   = [...new Set([tkey, ...tkeys].filter(Boolean))];
+      if (all.length){
+        const { data: masters } = await sb
+          .from("app_tags_master").select("key,label,kind").in("key", all).limit(500);
 
-  const tagLabel = document.createElement("div"); tagLabel.textContent="タグ（最大3つ）"; tagLabel.style.margin="10px 0 4px"; tagLabel.className="note";
-  const box = document.createElement("div"); box.className="row";
-  const chosen = new Set(tags||[]);
-  function refreshLock(){
-    const lock = chosen.size>=3;
-    for(const b of box.querySelectorAll(".chip-sel")) if(!b.classList.contains("on")){ b.disabled=lock; b.style.opacity=lock?".6":"1"; }
+        const toLabel = (k)=> (masters||[]).find(m=>m.key===k)?.label || k;
+
+        // テーマは theme_key を優先、なければ tag_key に kind===theme があるかチェック
+        theme = tkey ? toLabel(tkey) : null;
+
+        if (!theme){
+          const tFromTags = (masters||[]).find(m => m.kind==="theme" && tkeys.includes(m.key));
+          if (tFromTags) theme = tFromTags.label || tFromTags.key;
+        }
+
+        // 自由タグは theme とかぶるキーを除外
+        const themeKeyResolved = (masters||[]).find(m => (m.label===theme || m.key===theme))?.key ?? null;
+        tags = tkeys
+          .filter(k => k !== themeKeyResolved)
+          .map(toLabel);
+      }
+    }catch{}
   }
-  for(const t of MASTER.tags){
-    const c = document.createElement("button"); c.type="button"; c.className="chip-sel"+(chosen.has(t)?" on":""); c.textContent=t;
-    c.addEventListener("click", ()=>{
-      if(!c.classList.contains("on") && chosen.size>=3) return;
-      c.classList.toggle("on");
-      if(c.classList.contains("on")) chosen.add(t); else chosen.delete(t);
+
+  // ===== UI =====
+  const body = document.createElement("div");
+
+  const cap1 = Object.assign(document.createElement("div"), { textContent:"デッキの狙い（1つ）" });
+  cap1.className = "note"; cap1.style.margin = "6px 0 4px";
+
+  const sel = document.createElement("select");
+  // マスターに無いラベルでも選べるように、先頭に「未選択」、ついでに現在の値を先に差し込む
+  sel.innerHTML = `<option value="">未選択</option>`;
+  if (theme && !MASTER.themes.includes(theme)){
+    sel.insertAdjacentHTML("beforeend", `<option value="${theme}">${theme}</option>`);
+  }
+  sel.insertAdjacentHTML("beforeend", MASTER.themes.map(v=> `<option value="${v}">${v}</option>`).join(""));
+
+  // “ラベル一致” で確実に選択するヘルパ
+  const choose = (selectEl, valueOrText) => {
+    const want = String(valueOrText ?? "").trim();
+    if (!want){ selectEl.value=""; return; }
+    selectEl.value = want;
+    if (selectEl.value !== want){
+      const opt = Array.from(selectEl.options).find(o => String(o.textContent).trim() === want);
+      if (opt){ opt.selected = true; }
+    }
+  };
+  choose(sel, theme);   // ← 既存テーマを確実に選択
+
+  body.append(cap1, sel);
+
+  // タグ（最大3つ）
+  const cap2 = Object.assign(document.createElement("div"), { textContent:"タグ（最大3つ）" });
+  cap2.className="note"; cap2.style.margin = "10px 0 4px";
+
+  const box = document.createElement("div"); box.className="row";
+  const chosen = new Set((Array.isArray(tags)? tags: []).map(String));
+
+  function refreshLock(){
+    const lock = chosen.size >= 3;
+    for(const b of box.querySelectorAll(".chip-sel")){
+      if(!b.classList.contains("on")){ b.disabled = lock; b.style.opacity = lock ? ".6" : "1"; }
+    }
+  }
+
+  // マスターに無いタグも最初から選べるようにする
+  const tagUniverse = [...new Set([ ...MASTER.tags, ...chosen ])];
+  for(const t of tagUniverse){
+    const b = document.createElement("button");
+    b.type="button";
+    b.className = "chip-sel" + (chosen.has(t) ? " on" : "");
+    b.textContent = t;
+    b.addEventListener("click", ()=>{
+      if(!b.classList.contains("on") && chosen.size>=3) return;
+      b.classList.toggle("on");
+      if(b.classList.contains("on")) chosen.add(t); else chosen.delete(t);
       refreshLock();
     });
-    box.appendChild(c);
+    box.appendChild(b);
   }
   refreshLock();
-  body.append(tagLabel, box);
+  body.append(cap2, box);
 
   openModal("タグ編集", body, true, async ()=>{
     const ok = await saveTagsForDeck(deck_id, (sel.value||null), [...chosen]);
@@ -1030,24 +1351,58 @@ async function openTagsModal(deck_id){
 
 async function openReasonsModal(deck_id){
   let rows = [];
+
+  // ① Edge Functions 経由（CORS回避。まずこれ）
   try{
-    const r = await fetch(FN_REASON_SUM, { method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ deck_id, limit: 50 }) });
-    const j = await r.json().catch(()=> ({}));
-    if(r.ok && j?.ok && Array.isArray(j.data)) rows = j.data;
+    const { data, error } = await sb.functions.invoke("reason-sum", {
+      body: { deck_id, limit: 50 }
+    });
+    if (!error && data?.ok !== false && Array.isArray(data?.data)) {
+      rows = data.data; // { reason, cnt }[]
+    }
   }catch{}
-  if(rows.length===0){
+
+  // ② 直読 → JS集計（権限がある場合のフォールバック）
+  if (rows.length === 0){
     try{
-      const q = await sb.from("vote_reasons").select("reason").eq("deck_id", deck_id).limit(10000);
-      const map = new Map();
-      for(const r of (q.data||[])){ const k=r.reason||"その他"; map.set(k,(map.get(k)||0)+1); }
-      rows = [...map.entries()].map(([reason,cnt])=>({reason,cnt})).sort((a,b)=>b.cnt-a.cnt).slice(0,50);
+      const { data: list, error } = await sb
+        .from("vote_reasons")
+        .select("reason")
+        .eq("deck_id", deck_id)
+        .limit(10000);
+      if (!error && Array.isArray(list)){
+        const map = new Map();
+        for (const r of list){ const k = r?.reason || "その他"; map.set(k,(map.get(k)||0)+1); }
+        rows = [...map.entries()]
+          .map(([reason,cnt]) => ({ reason, cnt }))
+          .sort((a,b)=> b.cnt - a.cnt)
+          .slice(0,50);
+      }
     }catch{}
   }
+
+  // ③ RPC フォールバック（用意がある環境だけでヒット）
+  if (rows.length === 0){
+    try{
+      const { data, error } = await sb.rpc("reason_sum_by_deck", { p_deck: deck_id, p_limit: 50 });
+      if (!error && Array.isArray(data)){
+        rows = data
+          .map(r => ({ reason: r.reason, cnt: Number(r.cnt)||0 }))
+          .sort((a,b)=> b.cnt - a.cnt);
+      }
+    }catch{}
+  }
+
+  // ===== 表示 =====
   const body = document.createElement("div");
-  if(rows.length===0){ body.textContent="まだ理由がありません。"; }
-  else{
-    for(const r of rows){
-      const line = document.createElement("div"); line.style.display="flex"; line.style.justifyContent="space-between"; line.style.padding="4px 0";
+  if (rows.length === 0){
+    body.textContent = "まだ理由がありません。";
+  }else{
+    for (const r of rows){
+      const line = document.createElement("div");
+      line.style.display = "flex";
+      line.style.justifyContent = "space-between";
+      line.style.padding = "4px 0";
       line.innerHTML = `<span>${r.reason}</span><b>${r.cnt}</b>`;
       body.appendChild(line);
     }
