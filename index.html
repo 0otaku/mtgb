@@ -1439,6 +1439,40 @@ function makeMiniBar(c1,c2,c3,c4){
   bar.append(s1,s2,s3,s4,ov);
   return bar;
 }
+
+/* ===== 検索の最小バインド（本番向け） ===== */
+(function(){
+  const btn = document.getElementById("searchBtn");
+  const input = document.getElementById("searchInput");
+  if (!btn || !input) return;
+
+  // 既存の onclick を明示的に無効化（重複発火を防止）
+  btn.onclick = null;
+
+  async function runSearch(){
+    const v = (input.value || "").trim();
+    const url = canonUrl(v);
+    if (!url) { toast("URL または 数字ID を入力してください"); input.focus(); return; }
+    try {
+      const row = await ensureDeckExists(url);
+      await showDeckByRow(row, { showResults: true });
+    } catch (e) {
+      toast("デッキの取得に失敗しました: " + String(e?.message ?? e));
+    }
+  }
+
+  // IME中の Enter は無視
+  let composing = false;
+  input.addEventListener("compositionstart", ()=> composing = true);
+  input.addEventListener("compositionend",  ()=> composing = false);
+
+  btn.addEventListener("click", (e)=> { e.preventDefault(); runSearch(); });
+  input.addEventListener("keydown", (e)=>{
+    if (!composing && e.key === "Enter") { e.preventDefault(); runSearch(); }
+  });
+})();
+
+
 </script>
 </body>
 </html>
