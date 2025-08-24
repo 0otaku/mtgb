@@ -870,6 +870,31 @@ async function ensureDeckExists(url){
   throw new Error(j?.error || "登録に失敗しました");
 }
 
+/* ===== 検索欄（URL / 数字ID） ===== */
+const searchInput = document.getElementById("searchInput");
+const searchBtn   = document.getElementById("searchBtn");
+
+async function handleSearch(){
+  const v = (searchInput?.value || "").trim();
+  const url = canonUrl(v); // 既存ユーティリティ：数字ID/URL→正規URL
+  if (!url) {
+    toast("URL または 数字ID を入力してください");
+    searchInput?.focus();
+    return;
+  }
+  try {
+    const row = await ensureDeckExists(url);         // 未登録なら登録して取得
+    await showDeckByRow(row, { showResults: true }); // 読み込み＋右側に結果表示
+  } catch (e) {
+    toast("デッキの取得に失敗しました: " + String(e?.message ?? e));
+  }
+}
+
+searchBtn?.addEventListener("click", handleSearch);
+searchInput?.addEventListener("keydown", (e)=>{
+  if (e.key === "Enter") { e.preventDefault(); handleSearch(); }
+});
+
 /* ===== 投票 ===== */
 let voting = false;
 function setVoting(b){ voting=b; for(const btn of voteChips){ btn.disabled=b; } }
