@@ -643,7 +643,7 @@ function ensureXP(){
   if(!s.hist) s.hist=[]; if(s.cp==null) s.cp=0;
   return s;
 }
-function circled(n){ const base = 9311; return (n>=1 && n<=20) ? String.fromCharCode(base+n) : String(n); }
+function circled(n){ return String(n); } // ①②などは使わず通常の数字に
 function isDbl(sec){ return sec===11||sec===22||sec===33||sec===44||sec===55; }
 function updateXpUI(){
   const s = ensureXP();
@@ -655,11 +655,13 @@ function updateXpUI(){
 
   const order = ["C","W","U","B","R","G"];
   const syms = [];
-  if ((s.mana.C||0) > 0) syms.push(`<span class="sym C">${circled(s.mana.C)}</span>`);
-  for(let oi=1; oi<order.length; oi++){
+  // 無色は数字（1,2,3...）
+  if ((s.mana.C||0) > 0) syms.push(`<span class="sym C">${s.mana.C}</span>`);
+  // 有色は色だけ（文字なし）
+  for (let oi=1; oi<order.length; oi++) {
     const k = order[oi];
-    const cnt = s.mana[k]||0;
-    for(let i=0; i<cnt; i++) syms.push(`<span class="sym ${k}">${k}</span>`);
+    const cnt = s.mana[k] || 0;
+    for (let i=0; i<cnt; i++) syms.push(`<span class="sym ${k}" title="${k}"></span>`);
   }
   manaSyms.innerHTML = syms.join("");
 }
@@ -671,7 +673,7 @@ function pushHistory(rtSec){
 function showManaPop(color){
   const e = document.createElement("div");
   e.className="mana-pop";
-  e.innerHTML = `<span class="sym ${color}">${color==="C"?circled(1):color}</span>`;
+  e.innerHTML = `<span class="sym ${color}">${color==="C" ? "1" : ""}</span>`;
   document.body.appendChild(e);
   setTimeout(()=>{ try{ e.remove(); }catch{} }, 900);
 }
