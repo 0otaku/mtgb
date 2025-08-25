@@ -442,6 +442,8 @@ const FN_INGEST     = `${SUPABASE_URL}/functions/v1/ingest-hareruya`;
 const FN_REPORT     = `${SUPABASE_URL}/functions/v1/report-deck`;
 const FN_VOTE       = `${SUPABASE_URL}/functions/v1/vote`;
 const FN_SKIP       = `${SUPABASE_URL}/functions/v1/skip`;
+const FN_VALIDATE  = `${SUPABASE_URL}/functions/v1/hareruya-validate`;
+
 
 /* 共有URLは末尾 index.html を外す ★ 修正 */
 const APP_URL = (() => {
@@ -467,6 +469,26 @@ async function detectSchema(){
 }
 
 /* ===== Util ===== */
+function extractDeckIdFromUrl(u){
+  return (String(u||"").match(/decks\/(\d{4,})/) || String(u||"").match(/^(\d{4,})$/) || [])[1] || null;
+}
+async function findDeckByUrlOrId(url){
+  // 1) URL 完全一致
+  let r = await sb.from("decks")
+    .select("id,source_url,deck_name,deck_text_ja,registered_at")
+    .eq("source_url", url).maybeSingle();
+  if (r?.data?.id) return r.data;
+
+  // 2) ID 一致（URL 正規化違いの救済）
+  const id = extractDeckIdFromUrl(url);
+  if (id){
+    r = await sb.from("decks")
+      .select("id,source_url,deck_name,deck_text_ja,registered_at")
+      .eq("id", id).maybeSingle();
+    if (r?.data?.id) return r.data;
+  }
+  return null;
+}
 const $ = (q)=>document.querySelector(q);
 const toastEl = $("#toast");
 function toast(msg){ try{ toastEl.textContent=msg; toastEl.style.display="block"; clearTimeout(toastEl._t); toastEl._t=setTimeout(()=>toastEl.style.display="none", 1600);}catch{} }
@@ -479,6 +501,31 @@ function toDeckId(input){
       || (/^\d{4,}$/.test(s) ? s : null);
 }
 function canonUrl(input){ const id = toDeckId(input); return id ? `https://www.hareruyamtg.com/decks/${id}` : null; }
+
+/* ===== 晴れる屋の公開/存在チェック＋日本語デッキテキスト保存（Edge側で判定＆保存） ===== */
+async function validateHareruya(url){
+  const res = await fetch(FN_VALIDATE, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + SUPABASE_ANON,
+      "apikey": SUPABASE_ANON
+    },
+    body: JSON.stringify({ url })
+  });
+  const j = await res.json().catch(()=> ({}));
+  if (!res.ok) throw new Error(j?.error || `validator_${res.status}`);
+
+  // 非公開/削除はここで弾く
+  if (j?.ok && j.public === false) {
+    const r = String(j?.reason || "");
+    if (r === "private")      throw new Error("deck_private");
+    if (r === "not_found")    throw new Error("deck_not_found");
+    throw new Error("deck_unavailable");
+  }
+  // j: { ok:true, public:true, saved:boolean, has_text:boolean, deck_text_ja?, title? }
+  return j;
+}
 
 /* ===== log_impression: 互換ヘルパー ===== */
 async function safeLogImpression(deckId){
@@ -856,45 +903,126 @@ async function loadRandomDeck(){
   if (error) { toast("読み込みエラー"); return; }
   const row = (Array.isArray(data) ? data[0] : null);
   if (!row) { toast("未回答のデッキがありません"); return; }
+
+  // 表示直前ゲート：非公開/404は自動スキップ（セッション記録）
+  try{
+    const v = await validateHareruya(row.source_url);
+    if (v?.deck_text_ja && !row.deck_text_ja){
+      try{ await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", row.id); row.deck_text_ja = v.deck_text_ja; }catch{}
+    }
+  }catch(e){
+    const code = String(e?.message || e);
+    if (code.startsWith("deck_")) {
+      try{
+        await fetch(FN_SKIP, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+          body: JSON.stringify({ deck_id: row.id, session_id: sid, reason: "auto_invalid" })
+        });
+      }catch{}
+      // 次を読む
+      await loadRandomDeck();
+      return;
+    }
+  }
+
   await showDeckByRow(row,{showResults:false});
 }
 
-/* ===== 存在確認（なければ登録） ===== */
+/* ===== 存在確認（未登録なら：検証→OK→登録→テキスト補完） ===== */
 async function ensureDeckExists(url){
-  const { data } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
-  if(data?.id) return data;
-  const res = await fetch(FN_INGEST,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ url, session_id:sid }) });
-  const j = await res.json().catch(()=> ({}));
-  if(res.ok && j.ok){
-    const { data: after } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
-    if(after?.id) return after;
+  // 1) 表示前ゲート：必ず検証（非公開/404ならここで終了）
+  //    Edge 側で deck_text_ja も生成・保存する
+  const v = await validateHareruya(url); // 失敗時は例外 deck_private / deck_not_found / deck_unavailable
+
+  // 2) 既存チェック
+  let sel = await sb.from("decks")
+    .select("id,source_url,deck_name,deck_text_ja,registered_at")
+    .eq("source_url", url).maybeSingle();
+
+  if (sel?.data?.id){
+    // deck_text_ja が空なら、validator 由来を補完
+    if (!sel.data.deck_text_ja && v?.deck_text_ja){
+      try{
+        await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", sel.data.id);
+        sel.data.deck_text_ja = v.deck_text_ja;
+      }catch{}
+    }
+    return sel.data;
   }
+
+  // 3) 未登録 → Edge へ登録要求
+  const res = await fetch(FN_INGEST,{
+    method:"POST",
+    headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+    body: JSON.stringify({ url, session_id:sid })
+  });
+  const j = await res.json().catch(()=> ({}));
+
+  // 409（already_registered）を吸収：サーバが data を返せばそれを採用
+  if (res.status === 409 || j?.error === "already_registered") {
+    if (j?.data?.id) return j.data;
+    const again = await sb.from("decks")
+      .select("id,source_url,deck_name,deck_text_ja,registered_at")
+      .eq("source_url", url).maybeSingle();
+    if (again?.data) return again.data;
+    throw new Error("already_registered_but_not_readable");
+  }
+
+  // 新規作成成功：Edge の戻り値を第一ソースに
+  if (res.ok && j?.ok && j?.data?.id) {
+    const row = j.data;
+    if (!row.deck_text_ja && v?.deck_text_ja){
+      try{
+        await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", row.id);
+        row.deck_text_ja = v.deck_text_ja;
+      }catch{}
+    }
+    return row;
+  }
+
+  // 最終フォールバック
+  sel = await sb.from("decks")
+    .select("id,source_url,deck_name,deck_text_ja,registered_at")
+    .eq("source_url", url).maybeSingle();
+  if (sel?.data?.id) return sel.data;
+
   throw new Error(j?.error || "登録に失敗しました");
 }
-
 /* ===== 検索欄（URL / 数字ID） ===== */
 const searchInput = document.getElementById("searchInput");
 const searchBtn   = document.getElementById("searchBtn");
 
-async function handleSearch(){
+// 二重バインド防止
+function bindOnce(el, type, handler, opts){
+  if (!el) return;
+  const key = `__bound_${type}`;
+  if (el[key]) return;
+  el.addEventListener(type, handler, opts);
+  el[key] = true;
+}
+
+async function runSearch(){
   const v = (searchInput?.value || "").trim();
-  const url = canonUrl(v); // 既存ユーティリティ：数字ID/URL→正規URL
-  if (!url) {
-    toast("URL または 数字ID を入力してください");
-    searchInput?.focus();
-    return;
-  }
+  const url = canonUrl(v);
+  if (!url) { toast("URL または 数字ID を入力してください"); searchInput?.focus(); return; }
   try {
-    const row = await ensureDeckExists(url);         // 未登録なら登録して取得
-    await showDeckByRow(row, { showResults: true }); // 読み込み＋右側に結果表示
+    const row = await ensureDeckExists(url);         // 未登録なら登録→取得
+    await showDeckByRow(row, { showResults: true }); // 右側に結果表示
   } catch (e) {
     toast("デッキの取得に失敗しました: " + String(e?.message ?? e));
   }
 }
 
-searchBtn?.addEventListener("click", handleSearch);
-searchInput?.addEventListener("keydown", (e)=>{
-  if (e.key === "Enter") { e.preventDefault(); handleSearch(); }
+// IME中のEnterは無視
+let composing = false;
+bindOnce(searchInput, "compositionstart", ()=> composing = true);
+bindOnce(searchInput, "compositionend",  ()=> composing = false);
+
+// クリック/Enter を1か所に集約
+bindOnce(searchBtn,   "click",  (e)=> { e.preventDefault(); runSearch(); });
+bindOnce(searchInput, "keydown", (e)=> {
+  if (!composing && e.key === "Enter") { e.preventDefault(); runSearch(); }
 });
 
 /* ===== 投票 ===== */
@@ -1122,28 +1250,60 @@ async function saveTagsForDeck(deck_id, themeLabel, tagLabels){
 /* ===== 登録 ===== */
 $("#regBtn").addEventListener("click", async ()=>{
   const msg=$("#regMsg"); msg.textContent="";
-  const v=$("#regUrl").value.trim(); const url=canonUrl(v); if(!url){ msg.textContent="URL形式が正しくありません。"; return; }
+  const v=$("#regUrl").value.trim(); const url=canonUrl(v);
+  if(!url){ msg.textContent="URL形式が正しくありません。"; return; }
+
+  // 先に公開チェック
+  msg.textContent="検証中...";
+  try{ await validateHareruya(url); }
+  catch(e){
+    const code = String(e?.message || e);
+    if (code === "deck_private")   { msg.textContent="非公開/限定公開です。晴れる屋側で『全員に公開』にしてください。"; return; }
+    if (code === "deck_not_found") { msg.textContent="ページが見つかりません（削除/URL間違いの可能性）。"; return; }
+    msg.textContent="現在このURLは登録できません。"; return;
+  }
+
+  // 登録
   msg.textContent="登録中...";
   try{
-    const res = await fetch(FN_INGEST,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ url, session_id:sid }) });
+    const res = await fetch(FN_INGEST,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+      body: JSON.stringify({ url, session_id:sid })
+    });
     const j = await res.json().catch(()=> ({}));
-    if(res.ok && j.ok){
-      const row = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
-      const deckRow = row?.data;
-      if(deckRow?.id){
-        const theme = regThemeSel.value || null;
-        const tags  = [...regChosen];
-        await saveTagsForDeck(deckRow.id, theme, tags);
-        msg.textContent = "登録しました。";
-        try{ await showDeckByRow(deckRow,{showResults:false}); }catch{}
-      }else{
-        msg.textContent = "登録は成功しましたがデッキを取得できませんでした。";
-      }
-      loadMine();
-    }else{
-      msg.textContent = `登録失敗: ${j?.error || res.statusText}`;
+
+    // 409（already_registered）なら既存行をそのまま表示
+    if (res.status === 409 || j?.error === 'already_registered') {
+      msg.textContent = "このデッキは既に登録されています。検索から開いてください。";
+      if (j?.data?.id) { await showDeckByRow(j.data, { showResults: true }); return; }
+      try {
+        const existing = await findDeckByUrlOrId(url);
+        if (existing) { await showDeckByRow(existing, { showResults: true }); return; }
+      } catch {}
+      msg.textContent = "既に登録済みですが、取得できませんでした（already_registered_but_not_readable）。";
+      return;
     }
-  }catch{ msg.textContent="登録に失敗しました。"; }
+
+    // 新規作成成功
+    if (res.ok && j?.ok && j?.data?.id) {
+      const deckRow = j.data;
+
+      // UI: タグ保存
+      const theme = regThemeSel.value || null;
+      const tags  = [...regChosen];
+      await saveTagsForDeck(deckRow.id, theme, tags);
+
+      msg.textContent = "登録しました。";
+      try{ await showDeckByRow(deckRow,{showResults:false}); }catch{}
+      loadMine();
+      return;
+    }
+
+    msg.textContent = `登録失敗: ${j?.error || res.statusText}`;
+  }catch{
+    msg.textContent="登録に失敗しました。";
+  }
 });
 
 /* ===== 通報タブ ===== */
@@ -1441,39 +1601,6 @@ function makeMiniBar(c1,c2,c3,c4){
   bar.append(s1,s2,s3,s4,ov);
   return bar;
 }
-
-/* ===== 検索の最小バインド（本番向け） ===== */
-(function(){
-  const btn = document.getElementById("searchBtn");
-  const input = document.getElementById("searchInput");
-  if (!btn || !input) return;
-
-  // 既存の onclick を明示的に無効化（重複発火を防止）
-  btn.onclick = null;
-
-  async function runSearch(){
-    const v = (input.value || "").trim();
-    const url = canonUrl(v);
-    if (!url) { toast("URL または 数字ID を入力してください"); input.focus(); return; }
-    try {
-      const row = await ensureDeckExists(url);
-      await showDeckByRow(row, { showResults: true });
-    } catch (e) {
-      toast("デッキの取得に失敗しました: " + String(e?.message ?? e));
-    }
-  }
-
-  // IME中の Enter は無視
-  let composing = false;
-  input.addEventListener("compositionstart", ()=> composing = true);
-  input.addEventListener("compositionend",  ()=> composing = false);
-
-  btn.addEventListener("click", (e)=> { e.preventDefault(); runSearch(); });
-  input.addEventListener("keydown", (e)=>{
-    if (!composing && e.key === "Enter") { e.preventDefault(); runSearch(); }
-  });
-})();
-
 
 </script>
 </body>
