@@ -1331,7 +1331,7 @@ $("#regBtn").addEventListener("click", async ()=>{
   catch(e){
     const code = String(e?.message || e);
     if (code === "deck_private")   { msg.textContent="非公開/限定公開です。晴れる屋側で『全員に公開』にしてください。"; return; }
-    if (code === "deck_not_found") { msg.textContent="ページが見つかりません（削除/URL間違いの可能性）。"; return; }
+    if (code === "deck_not_found") { msg.textContent="ページが見つかりません（削除/URL間違い/非公開/限定公開の可能性）。"; return; }
     msg.textContent="現在このURLは登録できません。"; return;
   }
 
