@@ -443,7 +443,8 @@ const FN_REPORT     = `${SUPABASE_URL}/functions/v1/report-deck`;
 const FN_VOTE       = `${SUPABASE_URL}/functions/v1/vote`;
 const FN_SKIP       = `${SUPABASE_URL}/functions/v1/skip`;
 const FN_VALIDATE  = `${SUPABASE_URL}/functions/v1/hareruya-validate`;
-
+const FN_SET_TAGS  = `${SUPABASE_URL}/functions/v1/set-tags`;        // タグ保存のフォールバック
+const FN_DELETE_DECK = `${SUPABASE_URL}/functions/v1/delete-own-deck`; // 自分のデッキ削除のフォールバック
 
 /* 共有URLは末尾 index.html を外す ★ 修正 */
 const APP_URL = (() => {
@@ -457,7 +458,6 @@ const sid = (localStorage.getItem("sid") ||
                                       : String(Math.random()).slice(2)+"-"+Date.now()));
 localStorage.setItem("sid", sid);
 
-/* ===== Supabase クライアント ===== */
 /* ===== Supabase クライアント ===== */
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession:false, autoRefreshToken:false },
@@ -887,6 +887,7 @@ async function showDeckTags(deck_id){
 /* ===== 表示 ===== */
 async function showDeckByRow(row,{showResults=false}={}){
   currentDeck = row;
+  autoSkipStreak = 0;  // ←念のため
   reasonXpGiven = false;
   setEmbed(row.source_url);
 
@@ -912,35 +913,80 @@ async function showDeckByRow(row,{showResults=false}={}){
 }
 
 /* ===== ランダム ===== */
+const RECENT_BAD = new Set();        // 直近に「自動スキップ判定」になった deck_id
+let   autoSkipStreak = 0;            // 連続スキップ回数
+const MAX_AUTO_SKIP_STREAK = 5;      // これ以上続いたら自動読み込み停止
+let randomBusy = false;   // 二重起動ガード
+
 async function loadRandomDeck(){
-  const { data, error } = await sb.rpc("random_deck_for_session", { p_session: sid });
-  if (error) { toast("読み込みエラー"); return; }
-  const row = (Array.isArray(data) ? data[0] : null);
-  if (!row) { toast("未回答のデッキがありません"); return; }
+  // 二重起動ガード
+  if (randomBusy) return;
+  randomBusy = true;
 
-  // 表示直前ゲート：非公開/404は自動スキップ（セッション記録）
   try{
-    const v = await validateHareruya(row.source_url);
-    if (v?.deck_text_ja && !row.deck_text_ja){
-      try{ await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", row.id); row.deck_text_ja = v.deck_text_ja; }catch{}
-    }
-  }catch(e){
-    const code = String(e?.message || e);
-    if (code.startsWith("deck_")) {
-      try{
-        await fetch(FN_SKIP, {
-          method:"POST",
-          headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
-          body: JSON.stringify({ deck_id: row.id, session_id: sid, reason: "auto_invalid" })
-        });
-      }catch{}
-      // 次を読む
-      await loadRandomDeck();
-      return;
-    }
-  }
+    let picked = null;
 
-  await showDeckByRow(row,{showResults:false});
+    // 候補を最大10回まで取り直す（非公開/404は自動スキップ記録して次へ）
+    for (let tryN = 0; tryN < 10; tryN++){
+      const { data, error } = await sb.rpc("random_deck_for_session", { p_session: sid });
+      if (error || !Array.isArray(data) || !data[0]) {
+        toast("未回答のデッキがありません");
+        break;
+      }
+
+      const cand = data[0];
+
+      // 直近に自動NGと判定したものは避ける
+      if (RECENT_BAD.has(cand.id)) continue;
+
+      // 表示前ゲート：公開/存在チェック
+      try{
+        const v = await validateHareruya(cand.source_url);
+
+        // deck_text_ja の補完（あれば）
+        if (v?.deck_text_ja && !cand.deck_text_ja){
+          try{ await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", cand.id); }catch{}
+        }
+
+        picked = cand;                 // OK → 採用
+        autoSkipStreak = 0;            // 連続スキップ解除
+        break;
+      }catch(e){
+        const code = String(e?.message || e);
+        const hard = (code === "deck_private" || code === "deck_not_found");
+
+        // 一時失敗（通信・サーバ障害など）は再試行せず停止
+        if (!hard){
+          toast("デッキの検証に失敗しました。しばらく待って『次のデッキへ』を押してください。");
+          break;
+        }
+
+        // 非公開/404 → 自動スキップを記録 & 直近NGに追加
+        RECENT_BAD.add(cand.id);
+        try{
+          await fetch(FN_SKIP, {
+            method:"POST",
+            headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
+            body: JSON.stringify({ deck_id: cand.id, session_id: sid, reason: "auto_invalid" })
+          });
+        }catch{}
+
+        autoSkipStreak++;
+        if (autoSkipStreak >= MAX_AUTO_SKIP_STREAK){
+          toast("非公開/削除のデッキが続いたので自動読み込みを停止しました。『次のデッキへ』で再開できます。");
+          break;
+        }
+
+        // ループ継続して次の候補へ（※ ここで再帰呼び出しはしない）
+      }
+    }
+
+    if (picked){
+      await showDeckByRow(picked, { showResults:false });
+    }
+  } finally {
+    randomBusy = false;
+  }
 }
 
 /* ===== 存在確認（未登録なら：検証→OK→登録→テキスト補完） ===== */
@@ -1115,7 +1161,12 @@ async function onSkip(){
   await loadRandomDeck();
 }
 $("#skipBtn").addEventListener("click", onSkip);
-nextBtn.addEventListener("click", ()=> { clearInterval(autoNextTimer); autoNextTimer=null; reasonPanel.style.display="none"; loadRandomDeck(); });
+ nextBtn.addEventListener("click", async ()=> {
+   if (randomBusy) return;              // すでに読み込み中なら何もしない
+   clearInterval(autoNextTimer); autoNextTimer=null;
+   reasonPanel.style.display="none";
+   await loadRandomDeck();
+ });
 
 /* ===== 共有 ===== */
 function currentDeckLink(){
@@ -1215,106 +1266,28 @@ function initRegTagsUI(){
 }
 initRegTagsUI();
 
-/* タグ保存（新/旧スキーマ直書き。Edge set-tagsは使わない） */
+/* タグ保存（RPC 版：自分の分だけ上書き） */
 async function saveTagsForDeck(deck_id, themeLabel, tagLabels){
   if (!deck_id) return false;
+  try{
+    const tags = Array.isArray(tagLabels)
+      ? Array.from(new Set(tagLabels)).slice(0, 3)   // 念のため重複除去＆3件制限
+      : null;
 
-  // 最大3件に正規化
-  const tagsArr = Array.from(new Set(Array.isArray(tagLabels) ? tagLabels : [])).slice(0,3);
+    const { error } = await sb.rpc("save_own_tags_v1", {
+      p_deck: deck_id,
+      p_session: sid,
+      p_theme: (themeLabel && String(themeLabel).trim()) ? themeLabel : null,
+      p_tags: tags
+    });
 
-  const kind = await detectSchema();
-
-  // ===== new スキーマ（decks.theme_key / deck_tags.tag_key）=====
-  if (kind === "new"){
-    try{
-      // 1) マスタ取得
-      let { data: masters } = await sb
-        .from("app_tags_master")
-        .select("key,label,kind")
-        .limit(2000);
-
-      masters = masters || [];
-
-      // 2) マスタに無いラベルは作成（FK回避）
-      const need = [
-        ...(themeLabel ? [{ kind:"theme", label:String(themeLabel) }] : []),
-        ...tagsArr.map(l => ({ kind:"tag", label:String(l) }))
-      ];
-
-      const missing = need.filter(n =>
-        !masters.some(m =>
-          m.kind === n.kind && (m.label === n.label || m.key === n.label)
-        )
-      );
-
-      if (missing.length){
-        // key は label をそのまま使う（重複は upsert で吸収）
-        await sb.from("app_tags_master").upsert(
-          missing.map(m => ({ key: m.label, label: m.label, kind: m.kind })),
-          { onConflict: "key" }
-        );
-        // 作成後に取り直し
-        const re = await sb.from("app_tags_master").select("key,label,kind").limit(2000);
-        masters = re.data || masters;
-      }
-
-      const keyOf = (label, needKind) => {
-        const hit = (masters||[]).find(m =>
-          m.kind === needKind && (m.label === label || m.key === label)
-        );
-        // 最終手段：label を key として使う（上の upsert 済み）
-        return (hit?.key) || String(label);
-      };
-
-      const tkey = themeLabel ? keyOf(themeLabel, "theme") : null;
-      const keys = tagsArr.map(l => keyOf(l, "tag"));
-
-      const rows = [
-        ...(tkey ? [{ deck_id, tag_key: tkey, created_by_session: sid }] : []),
-        ...keys.map(k => ({ deck_id, tag_key: k, created_by_session: sid }))
-      ];
-
-      // 3) まず「自分が付けたタグだけ」を削除 → RLS で弾かれない
-      await sb.from("deck_tags")
-        .delete()
-        .eq("deck_id", deck_id)
-        .eq("created_by_session", sid);
-
-      // 4) まとめて挿入（FKはステップ2で担保済み）
-      if (rows.length){
-        const ins = await sb.from("deck_tags").insert(rows);
-        if (ins.error) throw ins.error;
-      }
-
-      // 5) decks.theme_key を更新（任意）
-      if (tkey){
-        const up = await sb.from("decks").update({ theme_key: tkey }).eq("id", deck_id);
-        if (up.error) throw up.error;
-      }
-      return true;
-    }catch(e){
-      console.warn("saveTagsForDeck(new) failed:", e);
+    if (error) {
+      console.warn("save_own_tags_v1 error:", error);
       return false;
     }
-  }
-
-  // ===== 旧スキーマ（deck_tags.theme / deck_tags.tags）=====
-  try{
-    await sb.from("deck_tags")
-      .delete()
-      .eq("deck_id", deck_id)
-      .eq("created_by_session", sid);
-
-    const ins = await sb.from("deck_tags").insert({
-      deck_id,
-      theme: (themeLabel || null),
-      tags: tagsArr,
-      created_by_session: sid
-    });
-    if (ins.error) throw ins.error;
     return true;
-  }catch(e){
-    console.warn("saveTagsForDeck(old) failed:", e);
+  } catch (e){
+    console.warn("saveTagsForDeck RPC failed:", e);
     return false;
   }
 }
@@ -1399,17 +1372,22 @@ async function openTagsModal(deck_id){
   // 表示値を「ラベル」で保持
   let theme = null, tags = [];
 
-  // 旧スキーマ（先に簡単な方）
+  const schemaKind = await detectSchema();
+
+/* 旧スキーマ（columns: theme, tags） */
+if (schemaKind === "old") {
   try{
-    const q = await sb.from("deck_tags").select("theme,tags").eq("deck_id", deck_id).maybeSingle();
+    const q = await sb.from("deck_tags")
+      .select("theme,tags").eq("deck_id", deck_id).maybeSingle();
     if (!q.error && q.data){
       theme = q.data.theme || null;
       tags  = Array.isArray(q.data.tags) ? q.data.tags : [];
     }
-  }catch{}
+  } catch{}
+}
 
-  // 新スキーマ
-  if (theme===null && tags.length===0){
+// 新スキーマ（columns: tag_key / decks.theme_key）
+if (schemaKind !== "old" && theme===null && tags.length===0){
     try{
       const [deckRow, tagRows] = await Promise.all([
         sb.from("decks").select("theme_key").eq("id", deck_id).maybeSingle(),
