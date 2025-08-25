@@ -1204,47 +1204,105 @@ initRegTagsUI();
 /* タグ保存（新/旧スキーマ直書き。Edge set-tagsは使わない） */
 async function saveTagsForDeck(deck_id, themeLabel, tagLabels){
   if (!deck_id) return false;
+
+  // 最大3件に正規化
   const tagsArr = Array.from(new Set(Array.isArray(tagLabels) ? tagLabels : [])).slice(0,3);
+
   const kind = await detectSchema();
 
+  // ===== new スキーマ（decks.theme_key / deck_tags.tag_key）=====
   if (kind === "new"){
     try{
-      const { data: masters } = await sb.from("app_tags_master").select("key,label,kind").limit(2000);
-      const toKey = (label, needKind)=> {
-        const hit = (masters||[]).find(m => m.kind===needKind && (m.label===label || m.key===label));
-        return hit?.key || label;
+      // 1) マスタ取得
+      let { data: masters } = await sb
+        .from("app_tags_master")
+        .select("key,label,kind")
+        .limit(2000);
+
+      masters = masters || [];
+
+      // 2) マスタに無いラベルは作成（FK回避）
+      const need = [
+        ...(themeLabel ? [{ kind:"theme", label:String(themeLabel) }] : []),
+        ...tagsArr.map(l => ({ kind:"tag", label:String(l) }))
+      ];
+
+      const missing = need.filter(n =>
+        !masters.some(m =>
+          m.kind === n.kind && (m.label === n.label || m.key === n.label)
+        )
+      );
+
+      if (missing.length){
+        // key は label をそのまま使う（重複は upsert で吸収）
+        await sb.from("app_tags_master").upsert(
+          missing.map(m => ({ key: m.label, label: m.label, kind: m.kind })),
+          { onConflict: "key" }
+        );
+        // 作成後に取り直し
+        const re = await sb.from("app_tags_master").select("key,label,kind").limit(2000);
+        masters = re.data || masters;
+      }
+
+      const keyOf = (label, needKind) => {
+        const hit = (masters||[]).find(m =>
+          m.kind === needKind && (m.label === label || m.key === label)
+        );
+        // 最終手段：label を key として使う（上の upsert 済み）
+        return (hit?.key) || String(label);
       };
 
-      const tkey = themeLabel ? toKey(themeLabel, "theme") : null;
-      const keys = tagsArr.map(l => toKey(l, "tag"));
+      const tkey = themeLabel ? keyOf(themeLabel, "theme") : null;
+      const keys = tagsArr.map(l => keyOf(l, "tag"));
+
       const rows = [
         ...(tkey ? [{ deck_id, tag_key: tkey, created_by_session: sid }] : []),
         ...keys.map(k => ({ deck_id, tag_key: k, created_by_session: sid }))
       ];
 
-      const before = await sb.from("deck_tags").select("tag_key").eq("deck_id", deck_id);
-      await sb.from("deck_tags").delete().eq("deck_id", deck_id);
+      // 3) まず「自分が付けたタグだけ」を削除 → RLS で弾かれない
+      await sb.from("deck_tags")
+        .delete()
+        .eq("deck_id", deck_id)
+        .eq("created_by_session", sid);
+
+      // 4) まとめて挿入（FKはステップ2で担保済み）
       if (rows.length){
         const ins = await sb.from("deck_tags").insert(rows);
-        if (ins.error){
-          if (Array.isArray(before.data) && before.data.length){
-            const rb = before.data.map(r=>({ deck_id, tag_key: r.tag_key, created_by_session: sid }));
-            await sb.from("deck_tags").insert(rb);
-          }
-          throw ins.error;
-        }
+        if (ins.error) throw ins.error;
       }
-      if (tkey) await sb.from("decks").update({ theme_key: tkey }).eq("id", deck_id);
+
+      // 5) decks.theme_key を更新（任意）
+      if (tkey){
+        const up = await sb.from("decks").update({ theme_key: tkey }).eq("id", deck_id);
+        if (up.error) throw up.error;
+      }
       return true;
-    }catch{}
-  }else{
-    try{
-      await sb.from("deck_tags").delete().eq("deck_id", deck_id);
-      await sb.from("deck_tags").insert({ deck_id, theme: (themeLabel||null), tags: tagsArr, created_by_session: sid });
-      return true;
-    }catch{}
+    }catch(e){
+      console.warn("saveTagsForDeck(new) failed:", e);
+      return false;
+    }
   }
-  return false;
+
+  // ===== 旧スキーマ（deck_tags.theme / deck_tags.tags）=====
+  try{
+    await sb.from("deck_tags")
+      .delete()
+      .eq("deck_id", deck_id)
+      .eq("created_by_session", sid);
+
+    const ins = await sb.from("deck_tags").insert({
+      deck_id,
+      theme: (themeLabel || null),
+      tags: tagsArr,
+      created_by_session: sid
+    });
+    if (ins.error) throw ins.error;
+    return true;
+  }catch(e){
+    console.warn("saveTagsForDeck(old) failed:", e);
+    return false;
+  }
 }
 
 /* ===== 登録 ===== */
