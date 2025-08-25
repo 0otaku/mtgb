@@ -442,9 +442,6 @@ const FN_INGEST     = `${SUPABASE_URL}/functions/v1/ingest-hareruya`;
 const FN_REPORT     = `${SUPABASE_URL}/functions/v1/report-deck`;
 const FN_VOTE       = `${SUPABASE_URL}/functions/v1/vote`;
 const FN_SKIP       = `${SUPABASE_URL}/functions/v1/skip`;
-const FN_VALIDATE  = `${SUPABASE_URL}/functions/v1/hareruya-validate`;
-const FN_SET_TAGS  = `${SUPABASE_URL}/functions/v1/set-tags`;        // タグ保存のフォールバック
-const FN_DELETE_DECK = `${SUPABASE_URL}/functions/v1/delete-own-deck`; // 自分のデッキ削除のフォールバック
 
 /* 共有URLは末尾 index.html を外す ★ 修正 */
 const APP_URL = (() => {
@@ -452,24 +449,10 @@ const APP_URL = (() => {
   return `${location.origin}${pathNoIndex || "/"}`;
 })();
 
-// --- sid をこの位置で確定させる（クライアント作成前）---
-const sid = (localStorage.getItem("sid") ||
-             (crypto?.randomUUID?.() ? crypto.randomUUID()
-                                      : String(Math.random()).slice(2)+"-"+Date.now()));
-localStorage.setItem("sid", sid);
-
 /* ===== Supabase クライアント ===== */
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession:false, autoRefreshToken:false },
-  global: {
-    headers: {
-      apikey: SUPABASE_ANON,
-      // RLS で参照されるセッションIDを常時送る
-      "x-session-id": sid,
-      "x-sid": sid,
-      "x-client-sid": sid
-    }
-  }
+  global: { headers: { apikey: SUPABASE_ANON } }
 });
 
 /* ====== スキーマ検出 ====== */
@@ -484,30 +467,11 @@ async function detectSchema(){
 }
 
 /* ===== Util ===== */
-function extractDeckIdFromUrl(u){
-  return (String(u||"").match(/decks\/(\d{4,})/) || String(u||"").match(/^(\d{4,})$/) || [])[1] || null;
-}
-async function findDeckByUrlOrId(url){
-  // 1) URL 完全一致
-  let r = await sb.from("decks")
-    .select("id,source_url,deck_name,deck_text_ja,registered_at")
-    .eq("source_url", url).maybeSingle();
-  if (r?.data?.id) return r.data;
-
-  // 2) ID 一致（URL 正規化違いの救済）
-  const id = extractDeckIdFromUrl(url);
-  if (id){
-    r = await sb.from("decks")
-      .select("id,source_url,deck_name,deck_text_ja,registered_at")
-      .eq("id", id).maybeSingle();
-    if (r?.data?.id) return r.data;
-  }
-  return null;
-}
 const $ = (q)=>document.querySelector(q);
 const toastEl = $("#toast");
 function toast(msg){ try{ toastEl.textContent=msg; toastEl.style.display="block"; clearTimeout(toastEl._t); toastEl._t=setTimeout(()=>toastEl.style.display="none", 1600);}catch{} }
-
+const sid = (localStorage.getItem("sid") || (crypto?.randomUUID?.() ? crypto.randomUUID() : String(Math.random()).slice(2)+"-"+Date.now()));
+localStorage.setItem("sid", sid);
 function toDeckId(input){
   const s = String(input||"").trim();
   return s.match(/decks\/(\d+)/)?.[1]
@@ -515,31 +479,6 @@ function toDeckId(input){
       || (/^\d{4,}$/.test(s) ? s : null);
 }
 function canonUrl(input){ const id = toDeckId(input); return id ? `https://www.hareruyamtg.com/decks/${id}` : null; }
-
-/* ===== 晴れる屋の公開/存在チェック＋日本語デッキテキスト保存（Edge側で判定＆保存） ===== */
-async function validateHareruya(url){
-  const res = await fetch(FN_VALIDATE, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + SUPABASE_ANON,
-      "apikey": SUPABASE_ANON
-    },
-    body: JSON.stringify({ url })
-  });
-  const j = await res.json().catch(()=> ({}));
-  if (!res.ok) throw new Error(j?.error || `validator_${res.status}`);
-
-  // 非公開/削除はここで弾く
-  if (j?.ok && j.public === false) {
-    const r = String(j?.reason || "");
-    if (r === "private")      throw new Error("deck_private");
-    if (r === "not_found")    throw new Error("deck_not_found");
-    throw new Error("deck_unavailable");
-  }
-  // j: { ok:true, public:true, saved:boolean, has_text:boolean, deck_text_ja?, title? }
-  return j;
-}
 
 /* ===== log_impression: 互換ヘルパー ===== */
 async function safeLogImpression(deckId){
@@ -887,7 +826,6 @@ async function showDeckTags(deck_id){
 /* ===== 表示 ===== */
 async function showDeckByRow(row,{showResults=false}={}){
   currentDeck = row;
-  autoSkipStreak = 0;  // ←念のため
   reasonXpGiven = false;
   setEmbed(row.source_url);
 
@@ -913,176 +851,50 @@ async function showDeckByRow(row,{showResults=false}={}){
 }
 
 /* ===== ランダム ===== */
-const RECENT_BAD = new Set();        // 直近に「自動スキップ判定」になった deck_id
-let   autoSkipStreak = 0;            // 連続スキップ回数
-const MAX_AUTO_SKIP_STREAK = 5;      // これ以上続いたら自動読み込み停止
-let randomBusy = false;   // 二重起動ガード
-
 async function loadRandomDeck(){
-  // 二重起動ガード
-  if (randomBusy) return;
-  randomBusy = true;
-
-  try{
-    let picked = null;
-
-    // 候補を最大10回まで取り直す（非公開/404は自動スキップ記録して次へ）
-    for (let tryN = 0; tryN < 10; tryN++){
-      const { data, error } = await sb.rpc("random_deck_for_session", { p_session: sid });
-      if (error || !Array.isArray(data) || !data[0]) {
-        toast("未回答のデッキがありません");
-        break;
-      }
-
-      const cand = data[0];
-
-      // 直近に自動NGと判定したものは避ける
-      if (RECENT_BAD.has(cand.id)) continue;
-
-      // 表示前ゲート：公開/存在チェック
-      try{
-        const v = await validateHareruya(cand.source_url);
-
-        // deck_text_ja の補完（あれば）
-        if (v?.deck_text_ja && !cand.deck_text_ja){
-          try{ await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", cand.id); }catch{}
-        }
-
-        picked = cand;                 // OK → 採用
-        autoSkipStreak = 0;            // 連続スキップ解除
-        break;
-      }catch(e){
-        const code = String(e?.message || e);
-        const hard = (code === "deck_private" || code === "deck_not_found");
-
-        // 一時失敗（通信・サーバ障害など）は再試行せず停止
-        if (!hard){
-          toast("デッキの検証に失敗しました。しばらく待って『次のデッキへ』を押してください。");
-          break;
-        }
-
-        // 非公開/404 → 自動スキップを記録 & 直近NGに追加
-        RECENT_BAD.add(cand.id);
-        try{
-          await fetch(FN_SKIP, {
-            method:"POST",
-            headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
-            body: JSON.stringify({ deck_id: cand.id, session_id: sid, reason: "auto_invalid" })
-          });
-        }catch{}
-
-        autoSkipStreak++;
-        if (autoSkipStreak >= MAX_AUTO_SKIP_STREAK){
-          toast("非公開/削除のデッキが続いたので自動読み込みを停止しました。『次のデッキへ』で再開できます。");
-          break;
-        }
-
-        // ループ継続して次の候補へ（※ ここで再帰呼び出しはしない）
-      }
-    }
-
-    if (picked){
-      await showDeckByRow(picked, { showResults:false });
-    }
-  } finally {
-    randomBusy = false;
-  }
+  const { data, error } = await sb.rpc("random_deck_for_session", { p_session: sid });
+  if (error) { toast("読み込みエラー"); return; }
+  const row = (Array.isArray(data) ? data[0] : null);
+  if (!row) { toast("未回答のデッキがありません"); return; }
+  await showDeckByRow(row,{showResults:false});
 }
 
-/* ===== 存在確認（未登録なら：検証→OK→登録→テキスト補完） ===== */
+/* ===== 存在確認（なければ登録） ===== */
 async function ensureDeckExists(url){
-  // 1) 表示前ゲート：必ず検証（非公開/404ならここで終了）
-  //    Edge 側で deck_text_ja も生成・保存する
-  const v = await validateHareruya(url); // 失敗時は例外 deck_private / deck_not_found / deck_unavailable
-
-  // 2) 既存チェック
-  let sel = await sb.from("decks")
-    .select("id,source_url,deck_name,deck_text_ja,registered_at")
-    .eq("source_url", url).maybeSingle();
-
-  if (sel?.data?.id){
-    // deck_text_ja が空なら、validator 由来を補完
-    if (!sel.data.deck_text_ja && v?.deck_text_ja){
-      try{
-        await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", sel.data.id);
-        sel.data.deck_text_ja = v.deck_text_ja;
-      }catch{}
-    }
-    return sel.data;
-  }
-
-  // 3) 未登録 → Edge へ登録要求
-  const res = await fetch(FN_INGEST,{
-    method:"POST",
-    headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
-    body: JSON.stringify({ url, session_id:sid })
-  });
+  const { data } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
+  if(data?.id) return data;
+  const res = await fetch(FN_INGEST,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ url, session_id:sid }) });
   const j = await res.json().catch(()=> ({}));
-
-  // 409（already_registered）を吸収：サーバが data を返せばそれを採用
-  if (res.status === 409 || j?.error === "already_registered") {
-    if (j?.data?.id) return j.data;
-    const again = await sb.from("decks")
-      .select("id,source_url,deck_name,deck_text_ja,registered_at")
-      .eq("source_url", url).maybeSingle();
-    if (again?.data) return again.data;
-    throw new Error("already_registered_but_not_readable");
+  if(res.ok && j.ok){
+    const { data: after } = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
+    if(after?.id) return after;
   }
-
-  // 新規作成成功：Edge の戻り値を第一ソースに
-  if (res.ok && j?.ok && j?.data?.id) {
-    const row = j.data;
-    if (!row.deck_text_ja && v?.deck_text_ja){
-      try{
-        await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", row.id);
-        row.deck_text_ja = v.deck_text_ja;
-      }catch{}
-    }
-    return row;
-  }
-
-  // 最終フォールバック
-  sel = await sb.from("decks")
-    .select("id,source_url,deck_name,deck_text_ja,registered_at")
-    .eq("source_url", url).maybeSingle();
-  if (sel?.data?.id) return sel.data;
-
   throw new Error(j?.error || "登録に失敗しました");
 }
+
 /* ===== 検索欄（URL / 数字ID） ===== */
 const searchInput = document.getElementById("searchInput");
 const searchBtn   = document.getElementById("searchBtn");
 
-// 二重バインド防止
-function bindOnce(el, type, handler, opts){
-  if (!el) return;
-  const key = `__bound_${type}`;
-  if (el[key]) return;
-  el.addEventListener(type, handler, opts);
-  el[key] = true;
-}
-
-async function runSearch(){
+async function handleSearch(){
   const v = (searchInput?.value || "").trim();
-  const url = canonUrl(v);
-  if (!url) { toast("URL または 数字ID を入力してください"); searchInput?.focus(); return; }
+  const url = canonUrl(v); // 既存ユーティリティ：数字ID/URL→正規URL
+  if (!url) {
+    toast("URL または 数字ID を入力してください");
+    searchInput?.focus();
+    return;
+  }
   try {
-    const row = await ensureDeckExists(url);         // 未登録なら登録→取得
-    await showDeckByRow(row, { showResults: true }); // 右側に結果表示
+    const row = await ensureDeckExists(url);         // 未登録なら登録して取得
+    await showDeckByRow(row, { showResults: true }); // 読み込み＋右側に結果表示
   } catch (e) {
     toast("デッキの取得に失敗しました: " + String(e?.message ?? e));
   }
 }
 
-// IME中のEnterは無視
-let composing = false;
-bindOnce(searchInput, "compositionstart", ()=> composing = true);
-bindOnce(searchInput, "compositionend",  ()=> composing = false);
-
-// クリック/Enter を1か所に集約
-bindOnce(searchBtn,   "click",  (e)=> { e.preventDefault(); runSearch(); });
-bindOnce(searchInput, "keydown", (e)=> {
-  if (!composing && e.key === "Enter") { e.preventDefault(); runSearch(); }
+searchBtn?.addEventListener("click", handleSearch);
+searchInput?.addEventListener("keydown", (e)=>{
+  if (e.key === "Enter") { e.preventDefault(); handleSearch(); }
 });
 
 /* ===== 投票 ===== */
@@ -1161,12 +973,7 @@ async function onSkip(){
   await loadRandomDeck();
 }
 $("#skipBtn").addEventListener("click", onSkip);
- nextBtn.addEventListener("click", async ()=> {
-   if (randomBusy) return;              // すでに読み込み中なら何もしない
-   clearInterval(autoNextTimer); autoNextTimer=null;
-   reasonPanel.style.display="none";
-   await loadRandomDeck();
- });
+nextBtn.addEventListener("click", ()=> { clearInterval(autoNextTimer); autoNextTimer=null; reasonPanel.style.display="none"; loadRandomDeck(); });
 
 /* ===== 共有 ===== */
 function currentDeckLink(){
@@ -1266,89 +1073,77 @@ function initRegTagsUI(){
 }
 initRegTagsUI();
 
-/* タグ保存（RPC 版：自分の分だけ上書き） */
+/* タグ保存（新/旧スキーマ直書き。Edge set-tagsは使わない） */
 async function saveTagsForDeck(deck_id, themeLabel, tagLabels){
   if (!deck_id) return false;
-  try{
-    const tags = Array.isArray(tagLabels)
-      ? Array.from(new Set(tagLabels)).slice(0, 3)   // 念のため重複除去＆3件制限
-      : null;
+  const tagsArr = Array.from(new Set(Array.isArray(tagLabels) ? tagLabels : [])).slice(0,3);
+  const kind = await detectSchema();
 
-    const { error } = await sb.rpc("save_own_tags_v1", {
-      p_deck: deck_id,
-      p_session: sid,
-      p_theme: (themeLabel && String(themeLabel).trim()) ? themeLabel : null,
-      p_tags: tags
-    });
+  if (kind === "new"){
+    try{
+      const { data: masters } = await sb.from("app_tags_master").select("key,label,kind").limit(2000);
+      const toKey = (label, needKind)=> {
+        const hit = (masters||[]).find(m => m.kind===needKind && (m.label===label || m.key===label));
+        return hit?.key || label;
+      };
 
-    if (error) {
-      console.warn("save_own_tags_v1 error:", error);
-      return false;
-    }
-    return true;
-  } catch (e){
-    console.warn("saveTagsForDeck RPC failed:", e);
-    return false;
+      const tkey = themeLabel ? toKey(themeLabel, "theme") : null;
+      const keys = tagsArr.map(l => toKey(l, "tag"));
+      const rows = [
+        ...(tkey ? [{ deck_id, tag_key: tkey, created_by_session: sid }] : []),
+        ...keys.map(k => ({ deck_id, tag_key: k, created_by_session: sid }))
+      ];
+
+      const before = await sb.from("deck_tags").select("tag_key").eq("deck_id", deck_id);
+      await sb.from("deck_tags").delete().eq("deck_id", deck_id);
+      if (rows.length){
+        const ins = await sb.from("deck_tags").insert(rows);
+        if (ins.error){
+          if (Array.isArray(before.data) && before.data.length){
+            const rb = before.data.map(r=>({ deck_id, tag_key: r.tag_key, created_by_session: sid }));
+            await sb.from("deck_tags").insert(rb);
+          }
+          throw ins.error;
+        }
+      }
+      if (tkey) await sb.from("decks").update({ theme_key: tkey }).eq("id", deck_id);
+      return true;
+    }catch{}
+  }else{
+    try{
+      await sb.from("deck_tags").delete().eq("deck_id", deck_id);
+      await sb.from("deck_tags").insert({ deck_id, theme: (themeLabel||null), tags: tagsArr, created_by_session: sid });
+      return true;
+    }catch{}
   }
+  return false;
 }
 
 /* ===== 登録 ===== */
 $("#regBtn").addEventListener("click", async ()=>{
   const msg=$("#regMsg"); msg.textContent="";
-  const v=$("#regUrl").value.trim(); const url=canonUrl(v);
-  if(!url){ msg.textContent="URL形式が正しくありません。"; return; }
-
-  // 先に公開チェック
-  msg.textContent="検証中...";
-  try{ await validateHareruya(url); }
-  catch(e){
-    const code = String(e?.message || e);
-    if (code === "deck_private")   { msg.textContent="非公開/限定公開です。晴れる屋側で『全員に公開』にしてください。"; return; }
-    if (code === "deck_not_found") { msg.textContent="ページが見つかりません（削除/URL間違い/非公開/限定公開の可能性）。"; return; }
-    msg.textContent="現在このURLは登録できません。"; return;
-  }
-
-  // 登録
+  const v=$("#regUrl").value.trim(); const url=canonUrl(v); if(!url){ msg.textContent="URL形式が正しくありません。"; return; }
   msg.textContent="登録中...";
   try{
-    const res = await fetch(FN_INGEST,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
-      body: JSON.stringify({ url, session_id:sid })
-    });
+    const res = await fetch(FN_INGEST,{ method:"POST", headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON }, body: JSON.stringify({ url, session_id:sid }) });
     const j = await res.json().catch(()=> ({}));
-
-    // 409（already_registered）なら既存行をそのまま表示
-    if (res.status === 409 || j?.error === 'already_registered') {
-      msg.textContent = "このデッキは既に登録されています。検索から開いてください。";
-      if (j?.data?.id) { await showDeckByRow(j.data, { showResults: true }); return; }
-      try {
-        const existing = await findDeckByUrlOrId(url);
-        if (existing) { await showDeckByRow(existing, { showResults: true }); return; }
-      } catch {}
-      msg.textContent = "既に登録済みですが、取得できませんでした（already_registered_but_not_readable）。";
-      return;
-    }
-
-    // 新規作成成功
-    if (res.ok && j?.ok && j?.data?.id) {
-      const deckRow = j.data;
-
-      // UI: タグ保存
-      const theme = regThemeSel.value || null;
-      const tags  = [...regChosen];
-      await saveTagsForDeck(deckRow.id, theme, tags);
-
-      msg.textContent = "登録しました。";
-      try{ await showDeckByRow(deckRow,{showResults:false}); }catch{}
+    if(res.ok && j.ok){
+      const row = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("source_url", url).maybeSingle();
+      const deckRow = row?.data;
+      if(deckRow?.id){
+        const theme = regThemeSel.value || null;
+        const tags  = [...regChosen];
+        await saveTagsForDeck(deckRow.id, theme, tags);
+        msg.textContent = "登録しました。";
+        try{ await showDeckByRow(deckRow,{showResults:false}); }catch{}
+      }else{
+        msg.textContent = "登録は成功しましたがデッキを取得できませんでした。";
+      }
       loadMine();
-      return;
+    }else{
+      msg.textContent = `登録失敗: ${j?.error || res.statusText}`;
     }
-
-    msg.textContent = `登録失敗: ${j?.error || res.statusText}`;
-  }catch{
-    msg.textContent="登録に失敗しました。";
-  }
+  }catch{ msg.textContent="登録に失敗しました。"; }
 });
 
 /* ===== 通報タブ ===== */
@@ -1372,22 +1167,17 @@ async function openTagsModal(deck_id){
   // 表示値を「ラベル」で保持
   let theme = null, tags = [];
 
-  const schemaKind = await detectSchema();
-
-/* 旧スキーマ（columns: theme, tags） */
-if (schemaKind === "old") {
+  // 旧スキーマ（先に簡単な方）
   try{
-    const q = await sb.from("deck_tags")
-      .select("theme,tags").eq("deck_id", deck_id).maybeSingle();
+    const q = await sb.from("deck_tags").select("theme,tags").eq("deck_id", deck_id).maybeSingle();
     if (!q.error && q.data){
       theme = q.data.theme || null;
       tags  = Array.isArray(q.data.tags) ? q.data.tags : [];
     }
-  } catch{}
-}
+  }catch{}
 
-// 新スキーマ（columns: tag_key / decks.theme_key）
-if (schemaKind !== "old" && theme===null && tags.length===0){
+  // 新スキーマ
+  if (theme===null && tags.length===0){
     try{
       const [deckRow, tagRows] = await Promise.all([
         sb.from("decks").select("theme_key").eq("id", deck_id).maybeSingle(),
@@ -1651,6 +1441,39 @@ function makeMiniBar(c1,c2,c3,c4){
   bar.append(s1,s2,s3,s4,ov);
   return bar;
 }
+
+/* ===== 検索の最小バインド（本番向け） ===== */
+(function(){
+  const btn = document.getElementById("searchBtn");
+  const input = document.getElementById("searchInput");
+  if (!btn || !input) return;
+
+  // 既存の onclick を明示的に無効化（重複発火を防止）
+  btn.onclick = null;
+
+  async function runSearch(){
+    const v = (input.value || "").trim();
+    const url = canonUrl(v);
+    if (!url) { toast("URL または 数字ID を入力してください"); input.focus(); return; }
+    try {
+      const row = await ensureDeckExists(url);
+      await showDeckByRow(row, { showResults: true });
+    } catch (e) {
+      toast("デッキの取得に失敗しました: " + String(e?.message ?? e));
+    }
+  }
+
+  // IME中の Enter は無視
+  let composing = false;
+  input.addEventListener("compositionstart", ()=> composing = true);
+  input.addEventListener("compositionend",  ()=> composing = false);
+
+  btn.addEventListener("click", (e)=> { e.preventDefault(); runSearch(); });
+  input.addEventListener("keydown", (e)=>{
+    if (!composing && e.key === "Enter") { e.preventDefault(); runSearch(); }
+  });
+})();
+
 
 </script>
 </body>
