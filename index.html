@@ -451,10 +451,25 @@ const APP_URL = (() => {
   return `${location.origin}${pathNoIndex || "/"}`;
 })();
 
+// --- sid をこの位置で確定させる（クライアント作成前）---
+const sid = (localStorage.getItem("sid") ||
+             (crypto?.randomUUID?.() ? crypto.randomUUID()
+                                      : String(Math.random()).slice(2)+"-"+Date.now()));
+localStorage.setItem("sid", sid);
+
+/* ===== Supabase クライアント ===== */
 /* ===== Supabase クライアント ===== */
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth: { persistSession:false, autoRefreshToken:false },
-  global: { headers: { apikey: SUPABASE_ANON } }
+  global: {
+    headers: {
+      apikey: SUPABASE_ANON,
+      // RLS で参照されるセッションIDを常時送る
+      "x-session-id": sid,
+      "x-sid": sid,
+      "x-client-sid": sid
+    }
+  }
 });
 
 /* ====== スキーマ検出 ====== */
@@ -492,8 +507,7 @@ async function findDeckByUrlOrId(url){
 const $ = (q)=>document.querySelector(q);
 const toastEl = $("#toast");
 function toast(msg){ try{ toastEl.textContent=msg; toastEl.style.display="block"; clearTimeout(toastEl._t); toastEl._t=setTimeout(()=>toastEl.style.display="none", 1600);}catch{} }
-const sid = (localStorage.getItem("sid") || (crypto?.randomUUID?.() ? crypto.randomUUID() : String(Math.random()).slice(2)+"-"+Date.now()));
-localStorage.setItem("sid", sid);
+
 function toDeckId(input){
   const s = String(input||"").trim();
   return s.match(/decks\/(\d+)/)?.[1]
