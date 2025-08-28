@@ -55,6 +55,25 @@ iframe{width:100%;height:70vh;min-height:520px;border:0;display:block;background
 .overlay .box .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px}
 .overlay .box a, .overlay .box button{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;cursor:pointer;font-size:14px}
 
+/* === 埋め込みスケーラ（3/6切替） === */
+#hyr-embed-scaler{ width:100%; position:relative; overflow:hidden; }
+#hyr-embed-scaler .inner{
+  /* 3枚=720px, 6枚=1200px をJSで切替（--target-w/--target-h） */
+  width: var(--target-w, 720px);
+  height: var(--target-h, 900px);
+  transform-origin: 0 0;
+}
+#hyr-embed-scaler iframe{ width:100%; height: var(--target-h, 900px); }
+
+/* オプション枠・ボタン（薄く小さく） */
+.optbtn{ border:1px solid #e5e7eb; padding:2px 8px; border-radius:8px; background:#fff; color:#6b7280; font-size:12px; }
+.optbtn[aria-pressed="true"]{ background:#f3f4f6; color:#374151; }
+
+/* モバイルは6枚を実質無効化（狭さのため） */
+@media (max-width: 860px){
+  /* JS側で3を強制適用するためCSS側は特に無し */
+}
+
 /* 投票 */
 .vote-card{display:flex;flex-direction:column;gap:12px}
 .vote-block{padding:12px;border:1px dashed var(--border);border-radius:14px;background:#fafafa}
@@ -254,6 +273,20 @@ header { align-items: center; }
   border-color: color-mix(in srgb, var(--accent) 42%, white);
   box-shadow: inset 0 0 0 1px rgba(99,102,241,.04);
 }
+
+/* オプションボタン（薄く小さく） */
+.optbtn{ border:1px solid #e5e7eb; padding:2px 8px; border-radius:8px; background:#fff; color:#6b7280; font-size:12px; }
+.optbtn[aria-pressed="true"]{ background:#f3f4f6; color:#374151; }
+
+/* モバイルは6枚を実質無効（幅が足りないため） */
+/* JS側で (max-width: 860px) を見て 3 を強制します */
+
+/* === 小モード時のレイアウト調整（PC） === */
+@media (min-width: 1000px){
+  body.cards-small .grid{ grid-template-columns: 1.6fr .4fr; }
+  body.cards-small .vote-row{ grid-template-columns: 1fr 1fr !important; }
+}
+body.cards-small .chip{ height: 64px; font-size: 22px; }
 </style>
 </head>
 <body>
@@ -271,9 +304,13 @@ header { align-items: center; }
 
   <div class="grid">
     <div class="embed-wrap card">
-      <iframe id="deckFrame" title="Hareruya Deck"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation-by-user-activation"
-              loading="eager"></iframe>
+      <div id="hyr-embed-scaler">
+        <div class="inner">
+          <iframe id="deckFrame" title="Hareruya Deck"
+                  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation-by-user-activation"
+                  loading="eager"></iframe>
+        </div>
+      </div>
 
       <div class="overlay" id="embedFail">
         <div class="box">
@@ -351,6 +388,24 @@ header { align-items: center; }
   </div>
 
   <footer class="card" style="margin-top:16px">
+
+<!-- ▼オプション枠（薄く小さく） -->
+<div id="mtgb-embed-options" style="margin:10px 0; padding:6px 8px; border:1px solid #e5e7eb; border-radius:10px; font-size:12px; color:#6b7280;">
+  <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+    <div>
+      <span style="opacity:.8; margin-right:6px;">カード画像</span>
+      <button id="opt-embed-3" class="optbtn" aria-pressed="true"  title="画像大">大</button>
+      <button id="opt-embed-6" class="optbtn" aria-pressed="false" title="画像小">小</button>
+      <span id="opt-embed-hint" style="margin-left:8px; opacity:.6;"></span>
+    </div>
+    <div>
+      <span style="opacity:.8; margin-right:6px;">自動SKIP</span>
+      <button id="opt-autonext-on"  class="optbtn" aria-pressed="true">ON</button>
+      <button id="opt-autonext-off" class="optbtn" aria-pressed="false">OFF</button>
+    </div>
+  </div>
+</div>
+
     <div class="note">
       ※ 本サイトは外部サイトのページを埋め込み表示します。掲載URLはユーザー投稿であり、
       内容の正確性・合法性を保証しません。著作権等の権利は各権利者に帰属します。
@@ -506,7 +561,37 @@ async function findDeckByUrlOrId(url){
 }
 const $ = (q)=>document.querySelector(q);
 const toastEl = $("#toast");
-function toast(msg){ try{ toastEl.textContent=msg; toastEl.style.display="block"; clearTimeout(toastEl._t); toastEl._t=setTimeout(()=>toastEl.style.display="none", 1600);}catch{} }
+function toast(msg){
+  try{
+    toastEl.textContent = msg;
+    toastEl.style.display = "block";
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(()=> toastEl.style.display="none", 1500);
+  }catch{}
+}
+
+// === 検索要素 & 二重バインド防止ヘルパ ===
+const searchInput = document.getElementById("searchInput");
+const searchBtn   = document.getElementById("searchBtn");
+
+function bindOnce(el, type, handler, opts){
+  if (!el) return;
+  const key = `__bound_${type}`;
+  if (el[key]) return;
+  el.addEventListener(type, handler, opts);
+  el[key] = true;
+}
+
+// 目立たない短文ヒント（オプション枠に表示して1.4秒で消える）
+function subtle(msg){
+  const h = document.getElementById("opt-embed-hint");
+  if(!h) return;
+  h.textContent = String(msg||"");
+  h.style.opacity = "0.85";
+  setTimeout(()=>{ h.style.transition="opacity .4s"; h.style.opacity="0";
+    setTimeout(()=>{ h.textContent=""; h.style.transition=""; }, 450);
+  }, 1400);
+}
 
 function toDeckId(input){
   const s = String(input||"").trim();
@@ -551,13 +636,11 @@ async function safeLogImpression(deckId){
 }
 
 /* ===== マスター（テーマ/タグ/理由） ===== */
-/* フォールバック（ラベルのみ） */
 let MASTER = {
   themes: ["コンボ","コンセプト","殴り","コントロール","スタックス","墓地利用","トークン","テンポ","ミッドレンジ","ランプ","その他"],
   tags:   ["部族","ブリンク","カウンター","トークン","墓地利用","ライフゲイン","宝物","ランプ","ロック","妨害","ヘイトベアー","増殖","コピー","装備品","打消し多め","速攻","全体除去","エンチャント多め","アーティファクト多め","多色","単色","二色","三色","５色","部族：エルフ","部族：ゴブリン","部族：人間","部族：スピリット","フレーバー重視"]
 };
-/* 理由マスタ（label-reason 用：key/label） */
-let REASONS_MASTER = []; // { key, label }[]
+let REASONS_MASTER = [];
 
 async function ensureMasters(){
   try {
@@ -607,12 +690,66 @@ function setEmbed(inputUrl){
   fail.style.display="none"; frame.removeAttribute("src"); frame.src = wwwUrl;
   clearTimeout(embedWatch); embedWatch = setTimeout(()=>{ fail.style.display="flex"; }, 6000);
 }
+
+/* === 埋め込みスケーラ & 3/6枚切替 === */
+const EMBED_COLS_KEY = "mtgb_embed_cols";
+function loadEmbedCols(){ try{ return localStorage.getItem(EMBED_COLS_KEY) || "3"; }catch{ return "3"; } }
+function saveEmbedCols(v){ try{ localStorage.setItem(EMBED_COLS_KEY, String(v)); }catch{} }
+
+// スケーラ：実寸を 720px / 1200px に固定し、外側幅に合わせて縮放
+function resizeEmbedScaler(){
+  const box = document.getElementById("hyr-embed-scaler");
+  const inner = box?.querySelector(".inner");
+  if(!box || !inner) return;
+  const targetW = parseFloat(getComputedStyle(box).getPropertyValue("--target-w")) || 720;
+  const targetH = parseFloat(getComputedStyle(box).getPropertyValue("--target-h")) || 900;
+  const scale = box.clientWidth / targetW;
+  const s = Math.max(0.1, Math.min(scale, 1));
+  inner.style.transform = `scale(${s})`;
+  box.style.height = `${targetH * s}px`;
+}
+
+function applyEmbedCols(cols){
+  const box = document.getElementById("hyr-embed-scaler");
+  if(!box) return;
+  const isMobile = window.matchMedia("(max-width: 860px)").matches;
+  const c = isMobile ? "3" : (cols==="6" ? "6" : "3");
+
+  box.style.setProperty("--target-w", c==="6" ? "1200px" : "720px");
+  box.style.setProperty("--target-h", "900px");
+
+  const b3 = document.getElementById("opt-embed-3");
+  const b6 = document.getElementById("opt-embed-6");
+  if(b3) b3.setAttribute("aria-pressed", String(c==="3"));
+  if(b6) b6.setAttribute("aria-pressed", String(c==="6"));
+
+  document.body.classList.toggle("cards-small", c==="6");
+
+  resizeEmbedScaler();
+}
+
+function wireEmbedColsButtons(){
+  const b3 = document.getElementById("opt-embed-3");
+  const b6 = document.getElementById("opt-embed-6");
+  if(!b3 || !b6) return;
+  bindOnce(b3, "click", ()=>{ saveEmbedCols("3"); applyEmbedCols("3"); });
+  bindOnce(b6, "click", ()=>{ saveEmbedCols("6"); applyEmbedCols("6"); });
+}
+
+function initEmbedCols(){
+  wireEmbedColsButtons();
+  applyEmbedCols(loadEmbedCols());
+  window.addEventListener("resize", resizeEmbedScaler);
+}
+
 frame.addEventListener("load", ()=>{ clearTimeout(embedWatch); try{ fail.style.display="none"; }catch{} });
+
 retryEmbed?.addEventListener("click", ()=> { if (currentDeck?.source_url) setEmbed(currentDeck.source_url); });
 
 /* ===== 状態 ===== */
 let currentDeck = null;
 let autoNextTimer = null;
+let autoNextEnabled = true;
 let deckShownAtMs = 0;
 let hadMyVoteBefore = false;
 let reasonXpGiven = false;
@@ -623,6 +760,16 @@ const seg1=$("#seg1"), seg2=$("#seg2"), seg3=$("#seg3"), seg4=$("#seg4");
 const p1=$("#p1"), p2=$("#p2"), p3=$("#p3"), p4=$("#p4");
 const nextBtn=$("#nextBtn"); const autoNextHint=$("#autoNextHint");
 const reasonPanel = $("#reasonPanel");
+
+/* ★ 追加: 集計UIの完全リセット（表示を消し、値を0%に戻す） */
+function resetResults(){
+  try{
+    resultsEl.style.display = "none";
+    seg1.style.left=seg2.style.left=seg3.style.left=seg4.style.left="0%";
+    seg1.style.width=seg2.style.width=seg3.style.width=seg4.style.width="0%";
+    p1.textContent=p2.textContent=p3.textContent=p4.textContent="0%";
+  }catch{}
+}
 
 function renderChart(c1,c2,c3,c4){
   const total=Math.max(0,c1+c2+c3+c4);
@@ -638,6 +785,31 @@ function renderChart(c1,c2,c3,c4){
   p4.textContent=Math.round(per[3])+"%";
 }
 
+// === 自動すすむ ON/OFF ===
+const AUTONEXT_KEY = "mtgb_auto_next";
+function loadAutoNext(){ try{ return (localStorage.getItem(AUTONEXT_KEY) ?? "true") !== "false"; }catch{ return true; } }
+function saveAutoNext(v){ try{ localStorage.setItem(AUTONEXT_KEY, v ? "true" : "false"); }catch{} }
+
+function applyAutoNextUI(){
+  const onBtn = document.getElementById("opt-autonext-on");
+  const offBtn = document.getElementById("opt-autonext-off");
+  if(onBtn) onBtn.setAttribute("aria-pressed", String(autoNextEnabled===true));
+  if(offBtn) offBtn.setAttribute("aria-pressed", String(autoNextEnabled===false));
+  if(!autoNextEnabled && typeof autoNextHint!=="undefined"){ autoNextHint.textContent = ""; }
+}
+function wireAutoNextButtons(){
+  const onBtn = document.getElementById("opt-autonext-on");
+  const offBtn = document.getElementById("opt-autonext-off");
+  if(!onBtn || !offBtn) return;
+  bindOnce(onBtn, "click", ()=>{ autoNextEnabled=true; saveAutoNext(true); applyAutoNextUI();  });
+  bindOnce(offBtn,"click", ()=>{ autoNextEnabled=false; saveAutoNext(false); applyAutoNextUI(); clearInterval(autoNextTimer); autoNextTimer=null;  });
+}
+function initAutoNextToggle(){
+  autoNextEnabled = loadAutoNext();
+  wireAutoNextButtons();
+  applyAutoNextUI();
+}
+
 /* 5秒未満は除外。ただし「rt_sec が null/未保存」の古い投票は含める */
 function passRtFilter(rt){ return (rt==null) || (Number(rt) >= 5); }
 
@@ -645,7 +817,7 @@ async function loadVotesAndRenderResults(forceShow=false){
   if(!currentDeck) return;
   let c1=0,c2=0,c3=0,c4=0;
 
-  // 1) RPC（ある場合）
+  // 1) RPC
   try{
     const rpc = await sb.rpc('labels_counts_by_deck', { p_deck: currentDeck.id, p_min_rt: 5, p_include_null:true });
     if(!rpc.error && Array.isArray(rpc.data) && rpc.data.length){
@@ -704,7 +876,7 @@ function ensureXP(){
   if(!s.hist) s.hist=[]; if(s.cp==null) s.cp=0;
   return s;
 }
-function circled(n){ return String(n); } // ①②などは使わず通常の数字に
+function circled(n){ return String(n); }
 function isDbl(sec){ return sec===11||sec===22||sec===33||sec===44||sec===55; }
 function updateXpUI(){
   const s = ensureXP();
@@ -716,9 +888,7 @@ function updateXpUI(){
 
   const order = ["C","W","U","B","R","G"];
   const syms = [];
-  // 無色は数字（1,2,3...）
   if ((s.mana.C||0) > 0) syms.push(`<span class="sym C">${s.mana.C}</span>`);
-  // 有色は色だけ（文字なし）
   for (let oi=1; oi<order.length; oi++) {
     const k = order[oi];
     const cnt = s.mana[k] || 0;
@@ -776,7 +946,7 @@ function addExtraXPOnce(){
   const s = ensureXP(); s.xp = (s.xp||0) + 1; saveXP(s); reasonXpGiven = true; updateXpUI();
 }
 
-/* ===== 理由チップ（label-reasonに統一） ===== */
+/* ===== 理由チップ ===== */
 function showReasonPanel(){
   reasonXpGiven = false;
   reasonPanel.innerHTML = "";
@@ -795,7 +965,6 @@ function showReasonPanel(){
 async function recordReasonKey(reason_key, btn){
   if (!currentDeck) return;
   let ok=false;
-  // 1) Edge: label-reason
   try{
     const res = await fetch(`${SUPABASE_URL}/functions/v1/label-reason`, {
       method:"POST",
@@ -805,7 +974,6 @@ async function recordReasonKey(reason_key, btn){
     const j = await res.json().catch(()=> ({}));
     ok = res.ok && j?.ok!==false;
   }catch{}
-  // 2) 直書きフォールバック
   if(!ok){
     try{
       const ins = await sb.from("label_reasons").upsert([{ deck_id: currentDeck.id, session_id: sid, reason_key }]);
@@ -815,7 +983,7 @@ async function recordReasonKey(reason_key, btn){
   if(ok){ btn.classList.add("on"); addExtraXPOnce(); }
 }
 
-/* タイトル右のタグ表示（新→旧） */
+/* タイトル右のタグ表示 */
 function tagChip(txt, kind){
   const el = document.createElement("span");
   el.className = "tagchip " + (kind || "free");
@@ -827,13 +995,11 @@ async function showDeckTags(deck_id){
   box.innerHTML = "";
   if (!deck_id) return;
 
-  // 1) 新スキーマ（decks.theme_key / deck_tags.tag_key）
   try{
     const [deckRow, tagRows] = await Promise.all([
       sb.from("decks").select("theme_key").eq("id", deck_id).maybeSingle(),
       sb.from("deck_tags").select("tag_key").eq("deck_id", deck_id).limit(200)
     ]);
-
     const themeKey = deckRow?.data?.theme_key || null;
     const tagKeys  = (tagRows?.data||[]).map(r=>r?.tag_key).filter(Boolean);
     const allKeys  = [...new Set([themeKey, ...tagKeys].filter(Boolean))];
@@ -847,7 +1013,6 @@ async function showDeckTags(deck_id){
       const kindOf  = (k) => byKey.get(k)?.kind  || "tag";
 
       let themeLabel = null, themeResolvedKey = null;
-
       if (themeKey){ themeLabel = labelOf(themeKey); themeResolvedKey = themeKey; }
       if (!themeLabel){
         const tk = tagKeys.find(k => kindOf(k)==="theme");
@@ -857,7 +1022,6 @@ async function showDeckTags(deck_id){
         const tCand = tagKeys.find(k => (MASTER?.themes||[]).includes(labelOf(k)));
         if (tCand){ themeLabel = labelOf(tCand); themeResolvedKey = tCand; }
       }
-
       if (themeLabel) box.appendChild(tagChip(themeLabel, "theme"));
 
       const tagLabels = tagKeys
@@ -871,8 +1035,6 @@ async function showDeckTags(deck_id){
       if (box.children.length) return;
     }
   }catch{}
-
-  // 2) 旧スキーマ（deck_tags.theme / deck_tags.tags）
   try{
     const q = await sb.from("deck_tags").select("theme,tags").eq("deck_id", deck_id).maybeSingle();
     if (!q.error && (q.data?.theme || Array.isArray(q.data?.tags))){
@@ -888,7 +1050,12 @@ async function showDeckTags(deck_id){
 async function showDeckByRow(row,{showResults=false}={}){
   currentDeck = row;
   reasonXpGiven = false;
+
+  /* ★ 追加: 別デッキへ移る瞬間に前デッキの集計UIを確実に消す */
+  resetResults();
+
   setEmbed(row.source_url);
+  resizeEmbedScaler();
 
   const id = toDeckId(row.source_url);
   if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
@@ -899,7 +1066,7 @@ async function showDeckByRow(row,{showResults=false}={}){
 
   await showDeckTags(row.id);
 
-  $("#results").style.display = showResults ? "flex":"none";
+  if (showResults) resultsEl.style.display = "flex"; // 明示
   await loadVotesAndRenderResults(showResults);
   await loadMyVote();
 
@@ -912,8 +1079,7 @@ async function showDeckByRow(row,{showResults=false}={}){
 }
 
 /* ===== ランダム ===== */
-let randomBusy = false;   // 二重起動ガード
-
+let randomBusy = false;
 async function loadRandomDeck(){
   if (randomBusy) return;
   randomBusy = true;
@@ -924,36 +1090,21 @@ async function loadRandomDeck(){
       return;
     }
     const cand = data[0];
-    // ★ もう検証はしない（登録時に弾いている前提）
     await showDeckByRow(cand, { showResults:false });
   } finally {
     randomBusy = false;
   }
 }
 
-/* ===== 存在確認（未登録なら：検証→OK→登録→テキスト補完） ===== */
+/* ===== 存在確認（未登録なら登録） ===== */
 async function ensureDeckExists(url){
-  // 1) 表示前ゲート：必ず検証（非公開/404ならここで終了）
-  //    Edge 側で deck_text_ja も生成・保存する
-  const v = await validateHareruya(url); // 失敗時は例外 deck_private / deck_not_found / deck_unavailable
-
-  // 2) 既存チェック
   let sel = await sb.from("decks")
     .select("id,source_url,deck_name,deck_text_ja,registered_at")
     .eq("source_url", url).maybeSingle();
+  if (sel?.data?.id) return sel.data;
 
-  if (sel?.data?.id){
-    // deck_text_ja が空なら、validator 由来を補完
-    if (!sel.data.deck_text_ja && v?.deck_text_ja){
-      try{
-        await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", sel.data.id);
-        sel.data.deck_text_ja = v.deck_text_ja;
-      }catch{}
-    }
-    return sel.data;
-  }
+  const v = await validateHareruya(url);
 
-  // 3) 未登録 → Edge へ登録要求
   const res = await fetch(FN_INGEST,{
     method:"POST",
     headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
@@ -961,9 +1112,7 @@ async function ensureDeckExists(url){
   });
   const j = await res.json().catch(()=> ({}));
 
-  // 409（already_registered）を吸収：サーバが data を返せばそれを採用
   if (res.status === 409 || j?.error === "already_registered") {
-    if (j?.data?.id) return j.data;
     const again = await sb.from("decks")
       .select("id,source_url,deck_name,deck_text_ja,registered_at")
       .eq("source_url", url).maybeSingle();
@@ -971,57 +1120,46 @@ async function ensureDeckExists(url){
     throw new Error("already_registered_but_not_readable");
   }
 
-  // 新規作成成功：Edge の戻り値を第一ソースに
   if (res.ok && j?.ok && j?.data?.id) {
     const row = j.data;
     if (!row.deck_text_ja && v?.deck_text_ja){
-      try{
-        await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", row.id);
-        row.deck_text_ja = v.deck_text_ja;
-      }catch{}
+      try{ await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", row.id); row.deck_text_ja = v.deck_text_ja; }catch{}
     }
+    /* ★ 修正：新規登録成功時に確実コピー＋トースト */
+    await copyVoteUrlSilently(row);
     return row;
   }
 
-  // 最終フォールバック
-  sel = await sb.from("decks")
+  const fallback = await sb.from("decks")
     .select("id,source_url,deck_name,deck_text_ja,registered_at")
     .eq("source_url", url).maybeSingle();
-  if (sel?.data?.id) return sel.data;
+  if (fallback?.data) return fallback.data;
 
   throw new Error(j?.error || "登録に失敗しました");
 }
-/* ===== 検索欄（URL / 数字ID） ===== */
-const searchInput = document.getElementById("searchInput");
-const searchBtn   = document.getElementById("searchBtn");
 
-// 二重バインド防止
-function bindOnce(el, type, handler, opts){
-  if (!el) return;
-  const key = `__bound_${type}`;
-  if (el[key]) return;
-  el.addEventListener(type, handler, opts);
-  el[key] = true;
-}
-
+/* ===== 検索 ===== */
 async function runSearch(){
   const v = (searchInput?.value || "").trim();
   const url = canonUrl(v);
-  if (!url) { toast("URL または 数字ID を入力してください"); searchInput?.focus(); return; }
+  if (!url) {
+    toast("URL または 数字ID を入力してください");
+    searchInput?.focus();
+    return;
+  }
   try {
-    const row = await ensureDeckExists(url);         // 未登録なら登録→取得
-    await showDeckByRow(row, { showResults: true }); // 右側に結果表示
+    const row = await ensureDeckExists(url);
+    await showDeckByRow(row, { showResults: true });
   } catch (e) {
     toast("デッキの取得に失敗しました: " + String(e?.message ?? e));
   }
 }
 
-// IME中のEnterは無視
+// IME
 let composing = false;
 bindOnce(searchInput, "compositionstart", ()=> composing = true);
 bindOnce(searchInput, "compositionend",  ()=> composing = false);
 
-// クリック/Enter を1か所に集約
 bindOnce(searchBtn,   "click",  (e)=> { e.preventDefault(); runSearch(); });
 bindOnce(searchInput, "keydown", (e)=> {
   if (!composing && e.key === "Enter") { e.preventDefault(); runSearch(); }
@@ -1051,6 +1189,7 @@ async function postVoteWithRetry(bracket, rtSec){
   }
   return false;
 }
+
 for (const el of document.querySelectorAll(".chip[data-vote]")){
   el.addEventListener("click", async (e)=>{
     if (!currentDeck || voting) return;
@@ -1073,19 +1212,21 @@ for (const el of document.querySelectorAll(".chip[data-vote]")){
       addXPIfFirstVote(rtSec, wasFirst);
       hadMyVoteBefore = true;
 
-      // 理由チップ（10秒）
       reasonPanel.style.display="flex";
       showReasonPanel();
 
-      // 次へカウントダウン
-      let left = 10;
-      autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-      clearInterval(autoNextTimer);
-      autoNextTimer = setInterval(()=>{
-        left--;
-        if(left<=0){ clearInterval(autoNextTimer); autoNextTimer=null; reasonPanel.style.display="none"; loadRandomDeck(); }
-        else autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
-      }, 1000);
+      clearInterval(autoNextTimer); autoNextTimer=null;
+      if (autoNextEnabled) {
+        let left = 10;
+        autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
+        autoNextTimer = setInterval(()=>{
+          left--;
+          if(left<=0){ clearInterval(autoNextTimer); autoNextTimer=null; reasonPanel.style.display="none"; loadRandomDeck(); }
+          else { autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`; }
+        }, 1000);
+      } else {
+        autoNextHint.textContent = "";
+      }
     }catch{ toast("保存エラーが発生しました。"); }
     finally{ setVoting(false); }
   });
@@ -1099,16 +1240,25 @@ async function onSkip(){
     }
   }catch{}
   clearInterval(autoNextTimer); autoNextTimer=null;
+
+  /* ★ 追加：画面遷移前に前回の集計表示を消す */
+  resetResults();
   reasonPanel.style.display="none";
+
   await loadRandomDeck();
 }
 $("#skipBtn").addEventListener("click", onSkip);
- nextBtn.addEventListener("click", async ()=> {
-   if (randomBusy) return;              // すでに読み込み中なら何もしない
-   clearInterval(autoNextTimer); autoNextTimer=null;
-   reasonPanel.style.display="none";
-   await loadRandomDeck();
- });
+
+nextBtn.addEventListener("click", async ()=>{
+  if (randomBusy) return;
+  clearInterval(autoNextTimer); autoNextTimer=null;
+
+  /* ★ 追加：画面遷移前に前回の集計表示を消す */
+  resetResults();
+  reasonPanel.style.display="none";
+
+  await loadRandomDeck();
+});
 
 /* ===== 共有 ===== */
 function currentDeckLink(){
@@ -1123,7 +1273,48 @@ function shareCurrentDeck(){
   const w = window.open(tw.toString(), "_blank", "noopener,noreferrer");
   if (!w) { location.href = tw.toString(); }
 }
+
 $("#shareBtn").addEventListener("click", shareCurrentDeck);
+
+/* 新規登録完了時に投票ページURLをクリップボードへ（静かに） */
+function deckVoteUrlFromRow(row){
+  const id = row ? toDeckId(row.source_url) : null;
+  return id ? `${APP_URL}?deck=${id}` : APP_URL;
+}
+
+/* ★ 修正：確実にコピー＆短いトースト（Clipboard→execCommand→prompt の三段fallback） */
+async function copyVoteUrlSilently(row){
+  const url = deckVoteUrlFromRow(row);
+  let ok = false;
+  try{
+    if (navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(url);
+      ok = true;
+    }
+  }catch{}
+  if (!ok){
+    try{
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      ok = document.execCommand("copy");
+      ta.remove();
+    }catch{}
+  }
+  if (!ok){
+    try{
+      window.prompt("投票ページURLをコピーしてください", url); // 最後の手段
+      ok = true;
+    }catch{}
+  }
+  if (ok) toast("投票ページのURLをコピーしました");
+  else toast("URLのコピーに失敗しました");
+}
 
 /* ===== 通報 ===== */
 $("#reportBtn").addEventListener("click", async ()=>{
@@ -1160,11 +1351,11 @@ for(const t of tabs){
   });
 }
 
-/* ===== 登録：タグUI 初期化（自由タグは最大3つ） ===== */
+/* ===== 登録：タグUI ===== */
 const regThemeSel = $("#regTheme");
-const regTagBox = $("#regTagBox");
-const regTagHint = $("#regTagHint");
-const regChosen = new Set();
+const regTagBox   = $("#regTagBox");
+const regTagHint  = $("#regTagHint");
+const regChosen   = new Set();
 function chip(htmlText, on, onclick){
   const s = document.createElement("button");
   s.type="button";
@@ -1191,9 +1382,7 @@ function updateTagLimitUI(){
   }
 }
 function initRegTagsUI(){
-  // テーマ
   regThemeSel.innerHTML = `<option value="">未選択</option>` + MASTER.themes.map(v=> `<option value="${v}">${v}</option>`).join("");
-  // タグ
   regTagBox.innerHTML = ""; regChosen.clear();
   for(const t of MASTER.tags){
     const c = chip(t, false, (willOn)=> {
@@ -1208,12 +1397,12 @@ function initRegTagsUI(){
 }
 initRegTagsUI();
 
-/* タグ保存（RPC 版：自分の分だけ上書き） */
+/* タグ保存（自分の分だけ上書き） */
 async function saveTagsForDeck(deck_id, themeLabel, tagLabels){
   if (!deck_id) return false;
   try{
     const tags = Array.isArray(tagLabels)
-      ? Array.from(new Set(tagLabels)).slice(0, 3)   // 念のため重複除去＆3件制限
+      ? Array.from(new Set(tagLabels)).slice(0, 3)
       : null;
 
     const { error } = await sb.rpc("save_own_tags_v1", {
@@ -1260,7 +1449,6 @@ $("#regBtn").addEventListener("click", async ()=>{
     });
     const j = await res.json().catch(()=> ({}));
 
-    // 409（already_registered）なら既存行をそのまま表示
     if (res.status === 409 || j?.error === 'already_registered') {
       msg.textContent = "このデッキは既に登録されています。検索から開いてください。";
       if (j?.data?.id) { await showDeckByRow(j.data, { showResults: true }); return; }
@@ -1272,9 +1460,11 @@ $("#regBtn").addEventListener("click", async ()=>{
       return;
     }
 
-    // 新規作成成功
     if (res.ok && j?.ok && j?.data?.id) {
       const deckRow = j.data;
+
+      // ★ 追加：新規登録成功時に確実コピー＋トースト
+      await copyVoteUrlSilently(deckRow);
 
       // UI: タグ保存
       const theme = regThemeSel.value || null;
@@ -1311,25 +1501,22 @@ $("#delBtn").addEventListener("click", async ()=>{
 $("#reloadMine").addEventListener("click", ()=> loadMine());
 
 async function openTagsModal(deck_id){
-  // 表示値を「ラベル」で保持
   let theme = null, tags = [];
 
   const schemaKind = await detectSchema();
 
-/* 旧スキーマ（columns: theme, tags） */
-if (schemaKind === "old") {
-  try{
-    const q = await sb.from("deck_tags")
-      .select("theme,tags").eq("deck_id", deck_id).maybeSingle();
-    if (!q.error && q.data){
-      theme = q.data.theme || null;
-      tags  = Array.isArray(q.data.tags) ? q.data.tags : [];
-    }
-  } catch{}
-}
+  if (schemaKind === "old") {
+    try{
+      const q = await sb.from("deck_tags")
+        .select("theme,tags").eq("deck_id", deck_id).maybeSingle();
+      if (!q.error && q.data){
+        theme = q.data.theme || null;
+        tags  = Array.isArray(q.data.tags) ? q.data.tags : [];
+      }
+    } catch{}
+  }
 
-// 新スキーマ（columns: tag_key / decks.theme_key）
-if (schemaKind !== "old" && theme===null && tags.length===0){
+  if (schemaKind !== "old" && theme===null && tags.length===0){
     try{
       const [deckRow, tagRows] = await Promise.all([
         sb.from("decks").select("theme_key").eq("id", deck_id).maybeSingle(),
@@ -1359,7 +1546,6 @@ if (schemaKind !== "old" && theme===null && tags.length===0){
     }catch{}
   }
 
-  // ===== UI =====
   const body = document.createElement("div");
 
   const cap1 = Object.assign(document.createElement("div"), { textContent:"デッキの狙い（1つ）" });
@@ -1422,8 +1608,6 @@ if (schemaKind !== "old" && theme===null && tags.length===0){
 
 async function openReasonsModal(deck_id){
   let rows = [];
-
-  // 1) label_reasons 直読 → JS集計
   try{
     const { data: list, error } = await sb
       .from("label_reasons")
@@ -1436,8 +1620,6 @@ async function openReasonsModal(deck_id){
       rows = [...m.entries()].map(([key,cnt])=>({key,cnt})).sort((a,b)=>b.cnt-a.cnt).slice(0,50);
     }
   }catch{}
-
-  // キー→ラベル解決
   if (rows.length){
     let labelMap = new Map(REASONS_MASTER.map(r=>[r.key, r.label]));
     if (!labelMap.size){
@@ -1446,10 +1628,9 @@ async function openReasonsModal(deck_id){
         if (!r.error && r.data?.length) labelMap = new Map(r.data.map(x=>[String(x.key), String(x.label||x.key)]));
       }catch{}
     }
-    rows = rows.map(x => ({ reason: labelMap.get(String(x.key)) || String(x.key), cnt: x.cnt }));
+    rows = rows.map(x => ({ reason: (new Map(REASONS_MASTER.map(r=>[r.key,r.label]))).get(String(x.key)) || String(x.key), cnt: x.cnt }));
   }
 
-  // ===== 表示 =====
   const body = document.createElement("div");
   if(rows.length===0){
     body.textContent = "まだ理由がありません。";
@@ -1534,7 +1715,7 @@ async function loadMine(){
   }
 }
 
-/* 削除：ダミーEdgeは呼ばず、RPC→直書きの順にフォールバック */
+/* 削除 */
 async function deleteOwn(deck_id, node){
   if(!confirm("この登録を削除しますか？（投票/通報も削除されます）")) return;
 
@@ -1554,6 +1735,8 @@ async function deleteOwn(deck_id, node){
 /* ===== 起動 ===== */
 updateXpUI();
 const paramDeck = new URLSearchParams(location.search).get("deck");
+initEmbedCols();
+initAutoNextToggle();
 if (paramDeck) {
   const url = canonUrl(paramDeck);
   if (url) {
@@ -1562,7 +1745,7 @@ if (paramDeck) {
   } else { await loadRandomDeck(); }
 } else { await loadRandomDeck(); }
 
-// キーボードショートカット
+// ショートカット
 window.addEventListener('keydown', (e)=>{
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
@@ -1593,7 +1776,6 @@ function makeMiniBar(c1,c2,c3,c4){
   bar.append(s1,s2,s3,s4,ov);
   return bar;
 }
-
 </script>
 </body>
 </html>
