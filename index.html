@@ -167,7 +167,12 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 .chip-sel.on{background:#111;color:#fff;border-color:#111}
 
 /* Xボタン */
-.xbtn{display:inline-flex;align-items:center;gap:6px;font-weight:700;background:#000;color:#fff;border:1px solid #000;border-radius:999px;padding:7px 12px;white-space:nowrap}
+.xbtn{
+  display:inline-flex;align-items:center;gap:6px;font-weight:700;
+  background:#000;color:#fff;border:1px solid #000;border-radius:999px;
+  padding:7px 12px;white-space:nowrap;
+  cursor:pointer; /* ← 指カーソルにする */
+}
 .xbtn svg{width:14px;height:14px;flex:0 0 auto}
 
 /* 簡易モーダル */
@@ -1098,13 +1103,14 @@ async function loadRandomDeck(){
 
 /* ===== 存在確認（未登録なら登録） ===== */
 async function ensureDeckExists(url){
-  let sel = await sb.from("decks")
-    .select("id,source_url,deck_name,deck_text_ja,registered_at")
-    .eq("source_url", url).maybeSingle();
-  if (sel?.data?.id) return sel.data;
+  // 0) まず既存確認（URL/IDの両方）
+  let exist = await findDeckByUrlOrId(url);
+  if (exist) return exist;
 
+  // 1) 未登録時だけ検証
   const v = await validateHareruya(url);
 
+  // 2) 登録要求
   const res = await fetch(FN_INGEST,{
     method:"POST",
     headers:{ "Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_ANON,"apikey":SUPABASE_ANON },
@@ -1112,31 +1118,29 @@ async function ensureDeckExists(url){
   });
   const j = await res.json().catch(()=> ({}));
 
+  // 3) 409（既存） -> URL/IDの両方で再取得
   if (res.status === 409 || j?.error === "already_registered") {
-    const again = await sb.from("decks")
-      .select("id,source_url,deck_name,deck_text_ja,registered_at")
-      .eq("source_url", url).maybeSingle();
-    if (again?.data) return again.data;
+    const again = await findDeckByUrlOrId(url);
+    if (again) return again;
     throw new Error("already_registered_but_not_readable");
   }
 
+  // 4) 新規作成成功
   if (res.ok && j?.ok && j?.data?.id) {
     const row = j.data;
     if (!row.deck_text_ja && v?.deck_text_ja){
       try{ await sb.from("decks").update({ deck_text_ja: v.deck_text_ja }).eq("id", row.id); row.deck_text_ja = v.deck_text_ja; }catch{}
     }
-    /* ★ 修正：新規登録成功時に確実コピー＋トースト */
-    await copyVoteUrlSilently(row);
     return row;
   }
 
-  const fallback = await sb.from("decks")
-    .select("id,source_url,deck_name,deck_text_ja,registered_at")
-    .eq("source_url", url).maybeSingle();
-  if (fallback?.data) return fallback.data;
+  // 5) 最終フォールバック（URL/IDの両方）
+  const fallback = await findDeckByUrlOrId(url);
+  if (fallback) return fallback;
 
   throw new Error(j?.error || "登録に失敗しました");
 }
+
 
 /* ===== 検索 ===== */
 async function runSearch(){
@@ -1150,9 +1154,29 @@ async function runSearch(){
   try {
     const row = await ensureDeckExists(url);
     await showDeckByRow(row, { showResults: true });
-  } catch (e) {
-    toast("デッキの取得に失敗しました: " + String(e?.message ?? e));
+    } catch (e) {
+  const msg = String(e?.message ?? e ?? "");
+  // 409/既存だがRLS等で読めない・validator系で弾かれた等 → 埋め込みのみ表示
+  if (/already_registered_but_not_readable|validator_/i.test(msg)) {
+    setEmbed(url);
+    resizeEmbedScaler();
+
+    const id = toDeckId(url);
+    const titleEl = document.querySelector('[data-deck-title]');
+    if (titleEl) {
+      titleEl.textContent = id ? `#${id}` : "#???????";
+      titleEl.href = url;
+    }
+    if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
+
+    resetResults();
+    markMyVote(null);
+    deckShownAtMs = performance.now();
+
+    return;
   }
+  toast("デッキの取得に失敗しました: " + msg);
+}
 }
 
 // IME
@@ -1260,21 +1284,28 @@ nextBtn.addEventListener("click", async ()=>{
   await loadRandomDeck();
 });
 
-/* ===== 共有 ===== */
-function currentDeckLink(){
+/* ===== 共有（X/Twitter） ===== */
+// その場の currentDeck からIDを抜き出して、固定URLを生成（raceを避ける）
+function stableDeckUrlForShare(){
   const id = currentDeck ? toDeckId(currentDeck.source_url) : null;
   return id ? `${APP_URL}?deck=${id}` : APP_URL;
 }
-function shareCurrentDeck(){
-  const url = currentDeckLink();
-  const tw = new URL("https://x.com/intent/tweet");
-  tw.searchParams.set("text", "このデッキのブラケットは？ #みんなでブラケット診断");
-  tw.searchParams.set("url", url);
-  const w = window.open(tw.toString(), "_blank", "noopener,noreferrer");
-  if (!w) { location.href = tw.toString(); }
+
+function shareCurrentDeck(e){
+try{ e?.preventDefault?.(); e?.stopPropagation?.(); }catch{}
+const url  = stableDeckUrlForShare();
+const text = `このデッキのブラケットは？\n${url}\n#みんなでブラケット診断`;
+const tw   = new URL("https://x.com/intent/tweet");
+tw.searchParams.set("text", text);
+
+// 新規タブで開く（ポップアップにしない）
+const win = window.open(tw.toString(), "_blank");
+// セキュリティ上の観点で可能なら opener を切る（対応ブラウザのみ）
+try{ if (win) win.opener = null; }catch{}
 }
 
-$("#shareBtn").addEventListener("click", shareCurrentDeck);
+document.getElementById("shareBtn")
+  ?.addEventListener("click", shareCurrentDeck, { passive:false });
 
 /* 新規登録完了時に投票ページURLをクリップボードへ（静かに） */
 function deckVoteUrlFromRow(row){
@@ -1741,7 +1772,36 @@ if (paramDeck) {
   const url = canonUrl(paramDeck);
   if (url) {
     try { const row = await ensureDeckExists(url); await showDeckByRow(row, { showResults: true }); }
-    catch { await loadRandomDeck(); }
+catch (e) {
+  // 失敗しても「ランダムへ飛ばさず」埋め込みのみ確実に表示
+  console.warn("paramDeck 読み込み失敗。埋め込みのみ表示にフォールバック:", e);
+
+  // 1) currentDeck の最小形を用意（投票や集計は使わないため id は null のまま）
+  currentDeck = { id: null, source_url: url };
+
+  // 2) 埋め込みは必ず表示
+  setEmbed(url);
+  resizeEmbedScaler();
+
+  // 3) タイトルとURLだけは更新（#1234567 表示・リンク先を保持）
+  const id = toDeckId(url);
+  const titleEl = document.querySelector('[data-deck-title]');
+  if (titleEl) {
+    titleEl.textContent = id ? `#${id}` : "#???????";
+    titleEl.href = url;
+  }
+
+  // 4) URLクエリも deck=xxxx に揃える（戻る対策含む）
+  if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
+
+  // 5) 集計UIと自票ハイライトは消しておく（“表示だけ”に徹する）
+  resetResults();
+  markMyVote(null);
+
+  // 6) 以後の時間計測など最低限の状態更新
+  deckShownAtMs = performance.now();
+
+}
   } else { await loadRandomDeck(); }
 } else { await loadRandomDeck(); }
 
