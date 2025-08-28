@@ -153,6 +153,16 @@ input[type="text"]{flex:1 1 420px; min-width:260px; padding:10px 12px; border:1p
 .item a{color:#111;text-decoration:none}
 .item a:hover{text-decoration:underline}
 
+/* — シートを最前面に／開いている間は「登録 / 確認」ボタンを隠す — */
+.sheet-backdrop{ z-index: 80; }   /* 背景幕を前面へ */
+.sheet{ z-index: 90; }            /* シート本体はさらに前面へ */
+
+body.sheet-open #openSheet{
+  visibility: hidden;             /* 念のため見えなくする（クリックも不可） */
+  pointer-events: none;
+}
+body.sheet-open{ overflow: hidden; } /* 背景のスクロールもロック */
+
 /* ミニグラフ */
 .mini-wrap{flex:1; display:flex; align-items:center; gap:8px}
 .mini-bar{ position:relative; height:18px; width:100%; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:4px; overflow:hidden; }
@@ -242,7 +252,6 @@ header { align-items: center; }
   }
 
   /* ボタンは右上に固定、タグは自動幅＋必要なら改行 */
-  header{ display:block; }
   #openSheet{
     position: absolute;
     top: 6px;
@@ -292,6 +301,79 @@ header { align-items: center; }
   body.cards-small .vote-row{ grid-template-columns: 1fr 1fr !important; }
 }
 body.cards-small .chip{ height: 64px; font-size: 22px; }
+
+/* --- SP: デッキIDとタグを1行で横並びに（省略表示） --- */
+@media (max-width: 680px){
+  .deck-meta{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:nowrap;  /* 折り返さない */
+    min-width:0;
+  }
+  .deck-link{ flex:0 0 auto; }
+  #deckTags{
+    flex:1 1 auto;
+    min-width:0;
+    display:flex;
+    gap:4px;
+    overflow:hidden;     /* 右側を省略 */
+  }
+  #deckTags .tagchip{
+    flex:0 0 auto;
+    white-space:nowrap;  /* タグも改行しない */
+  }
+}
+
+/* --- SP: 検索行（ボタンを1行表示に） --- */
+@media (max-width: 680px){
+  .search-row{ align-items:center; }
+  .search-row input[type="text"]{
+    flex: 1 1 auto;  /* 420px 基準を捨てる */
+    min-width: 0;    /* 狭い時に縮められるように */
+  }
+  #searchBtn{
+    flex: 0 0 auto;
+    white-space: nowrap;  /* 「検索」を1行固定 */
+  }
+}
+
+/* --- SP: 自分のデッキ行を 右=上:グラフ / 下:ボタン に --- */
+@media (max-width: 680px){
+  .item{
+    display:grid;
+    grid-template-columns: 72px 1fr;   /* 左：ID、右：中身 */
+    grid-template-rows: auto auto;     /* 上：グラフ、下：ボタン */
+    align-items:center;
+    gap:6px 8px;
+  }
+  .item > a{            /* ID (#1234567) は左に縦2マス占有 */
+    grid-column:1 / 2;
+    grid-row:1 / 3;
+  }
+  .item .mini-wrap{     /* ミニグラフは右上 */
+    grid-column:2 / 3;
+    grid-row:1 / 2;
+  }
+  .item .btn-row{       /* ボタン群は右下 */
+    grid-column:2 / 3;
+    grid-row:2 / 3;
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+  }
+
+  /* ボタンを小さく・1行表示優先 */
+  .item .small-btn{
+    font-size:12px;
+    padding:4px 8px;
+    white-space:nowrap;
+  }
+
+  /* グラフの高さも控えめに */
+  .mini-bar{ height:14px; }
+}
+
 </style>
 </head>
 <body>
@@ -667,12 +749,32 @@ async function ensureMasters(){
   try {
     const t = await sb.from("app_tags_master").select("kind,key,label").limit(2000);
     if (!t.error && t.data?.length){
-      const themes = t.data.filter(x=>x.kind==="theme").map(x=>x.label || x.key);
-      const tags   = t.data.filter(x=>x.kind==="tag").map(x=>x.label || x.key);
+      // ▼ ここから置き換え
+      const norm = s => String(s||"").trim().toLowerCase();
+
+      const uniqByLabel = (rows, kind) => {
+        const seen = new Set();
+        const out = [];
+        for (const r of rows) {
+          if (r.kind !== kind) continue;
+          const label = String(r.label || r.key);
+          const k = norm(label);
+          if (seen.has(k)) continue;
+          seen.add(k);
+          out.push(label);
+        }
+        return out;
+      };
+
+      const themes = uniqByLabel(t.data, "theme");
+      const tags   = uniqByLabel(t.data, "tag");
+
       if (themes.length) MASTER.themes = themes;
       if (tags.length)   MASTER.tags   = tags;
+      // ▲ ここまで
     }
   } catch {}
+
   try {
     const r = await sb.from("app_reasons_master").select("key,label").limit(2000);
     if (!r.error && r.data?.length){
@@ -1470,9 +1572,17 @@ $("#reportBtn").addEventListener("click", async ()=>{
 });
 
 /* ===== シート ===== */
-const sheet=$("#sheet"), backdrop=$("#backdrop");
-function openSheet(){ sheet.style.display="flex"; backdrop.style.display="block"; }
-function closeSheet(){ sheet.style.display="none"; backdrop.style.display="none"; }
+const sheet = $("#sheet"), backdrop = $("#backdrop");
+function openSheet(){
+  sheet.style.display = "flex";
+  backdrop.style.display = "block";
+  document.body.classList.add("sheet-open");   // ← 追加
+}
+function closeSheet(){
+  sheet.style.display = "none";
+  backdrop.style.display = "none";
+  document.body.classList.remove("sheet-open"); // ← 追加
+}
 $("#openSheet").addEventListener("click", openSheet);
 $("#closeSheet").addEventListener("click", closeSheet);
 backdrop.addEventListener("click", closeSheet);
@@ -1852,7 +1962,12 @@ async function loadMine(){
     const del=document.createElement("button"); del.className="small-btn"; del.textContent="削除"; del.type="button";
     del.addEventListener("click", ()=> deleteOwn(d.id, item));
 
-    item.append(a, wrap, show, reasonBtn, tagBtn, del);
+    const btnRow = document.createElement("div");
+    btnRow.className = "btn-row";
+    btnRow.append(show, reasonBtn, tagBtn, del);
+
+    item.append(a, wrap, btnRow);
+
     listEl.appendChild(item);
   }
 }
