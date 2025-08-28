@@ -758,6 +758,9 @@ let autoNextEnabled = true;
 let deckShownAtMs = 0;
 let hadMyVoteBefore = false;
 let reasonXpGiven = false;
+// 共有用：最後に描画したデッキID & クリック開始時点のスナップショット
+let lastDeckIdForShare = null;
+let shareSnapshotId = null;
 
 /* ===== 集計 ===== */
 const resultsEl = $("#results");
@@ -1063,7 +1066,13 @@ async function showDeckByRow(row,{showResults=false}={}){
   resizeEmbedScaler();
 
   const id = toDeckId(row.source_url);
-  if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
+  if (id) {
+    // URLもUIもこの時点で確定させる
+    history.replaceState(null, "", `${APP_URL}?deck=${id}`);
+    lastDeckIdForShare = id;
+    const sb = document.getElementById("shareBtn");
+    if (sb) sb.dataset.deckId = id; // ボタンにも保持（DOM由来で読むための保険）
+  }
 
   const titleEl=document.querySelector('[data-deck-title]');
   titleEl.textContent = id ? `#${id}` : "#???????";
@@ -1153,7 +1162,7 @@ async function runSearch(){
   }
   try {
     const row = await ensureDeckExists(url);
-    await showDeckByRow(row, { showResults: true });
+    await showDeckByRow(row, { showResults: false }); // ← 非表示
     } catch (e) {
   const msg = String(e?.message ?? e ?? "");
   // 409/既存だがRLS等で読めない・validator系で弾かれた等 → 埋め込みのみ表示
@@ -1168,6 +1177,11 @@ async function runSearch(){
       titleEl.href = url;
     }
     if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
+
+// 共有用IDも必ず更新
+lastDeckIdForShare = id;
+const sbtn1 = document.getElementById("shareBtn");
+if (sbtn1) sbtn1.dataset.deckId = id;
 
     resetResults();
     markMyVote(null);
@@ -1284,28 +1298,58 @@ nextBtn.addEventListener("click", async ()=>{
   await loadRandomDeck();
 });
 
+// いま画面に表示しているデッキIDを安定して取得
+function getShareDeckId(){
+  // 1) URLクエリ（?deck=xxxx）を最優先
+  const qp = new URLSearchParams(location.search).get("deck");
+  const fromParam = toDeckId(qp);
+  if (fromParam) return fromParam;
+
+  // 2) 画面状態（currentDeck）
+  const fromCurrent = toDeckId(currentDeck?.source_url);
+  if (fromCurrent) return fromCurrent;
+
+  // 3) ボタンの data 属性（保険）
+  const fromBtn = document.getElementById("shareBtn")?.dataset.deckId;
+  if (fromBtn) return fromBtn;
+
+  // 4) 直近描画ID（最終保険）
+  return lastDeckIdForShare || null;
+}
+
 /* ===== 共有（X/Twitter） ===== */
-// その場の currentDeck からIDを抜き出して、固定URLを生成（raceを避ける）
-function stableDeckUrlForShare(){
-  const id = currentDeck ? toDeckId(currentDeck.source_url) : null;
-  return id ? `${APP_URL}?deck=${id}` : APP_URL;
+// クリック開始時点（pointerdown / keydown）でデッキIDをスナップショット → click でそのIDを使う
+const shareBtnEl = document.getElementById("shareBtn");
+
+function snapshotShareId(){
+  shareSnapshotId = getShareDeckId(); // ← 常に最新状態から取得
 }
 
-function shareCurrentDeck(e){
-try{ e?.preventDefault?.(); e?.stopPropagation?.(); }catch{}
-const url  = stableDeckUrlForShare();
+if (shareBtnEl){
+  // マウス/タッチ
+  shareBtnEl.addEventListener("pointerdown", snapshotShareId, { passive:true });
+  // キーボード操作にも対応（Enter / Space）
+  shareBtnEl.addEventListener("keydown", (e)=>{
+    if (e.key === "Enter" || e.key === " ") snapshotShareId();
+  });
+
+  shareBtnEl.addEventListener("click", (e)=>{
+    // この瞬間に次デッキへ切り替わらないよう、まず自動Nextを停止
+    try{ e.preventDefault(); e.stopPropagation(); }catch{}
+    clearInterval(autoNextTimer); autoNextTimer = null;
+    reasonPanel.style.display = "none";
+
+const id = shareSnapshotId || getShareDeckId();  // ← スナップが無ければ再取得
+shareSnapshotId = null;
+const url = id ? `${APP_URL}?deck=${id}` : location.href;
 const text = `このデッキのブラケットは？\n${url}\n#みんなでブラケット診断`;
-const tw   = new URL("https://x.com/intent/tweet");
+
+const tw = new URL("https://x.com/intent/tweet");
 tw.searchParams.set("text", text);
+window.open(tw.toString(), "_blank", "noopener,noreferrer");
 
-// 新規タブで開く（ポップアップにしない）
-const win = window.open(tw.toString(), "_blank");
-// セキュリティ上の観点で可能なら opener を切る（対応ブラウザのみ）
-try{ if (win) win.opener = null; }catch{}
+  }, { passive:false });
 }
-
-document.getElementById("shareBtn")
-  ?.addEventListener("click", shareCurrentDeck, { passive:false });
 
 /* 新規登録完了時に投票ページURLをクリップボードへ（静かに） */
 function deckVoteUrlFromRow(row){
@@ -1727,8 +1771,10 @@ async function loadMine(){
 
     const show=document.createElement("button"); show.className="small-btn"; show.textContent="表示"; show.type="button";
     show.addEventListener("click", async ()=> {
-      const row = await sb.from("decks").select("id,source_url,deck_name,registered_at").eq("id", d.id).maybeSingle();
-      if(row.data) await showDeckByRow(row.data,{showResults:false});
+      const row = await sb.from("decks")
+        .select("id,source_url,deck_name,registered_at")
+        .eq("id", d.id).maybeSingle();
+      if (row.data) await showDeckByRow(row.data, { showResults: true }); // ← ここを true に
       closeSheet();
     });
 
@@ -1771,7 +1817,8 @@ initAutoNextToggle();
 if (paramDeck) {
   const url = canonUrl(paramDeck);
   if (url) {
-    try { const row = await ensureDeckExists(url); await showDeckByRow(row, { showResults: true }); }
+    try { const row = await ensureDeckExists(url);
+       await showDeckByRow(row, { showResults: false }); }
 catch (e) {
   // 失敗しても「ランダムへ飛ばさず」埋め込みのみ確実に表示
   console.warn("paramDeck 読み込み失敗。埋め込みのみ表示にフォールバック:", e);
@@ -1793,6 +1840,12 @@ catch (e) {
 
   // 4) URLクエリも deck=xxxx に揃える（戻る対策含む）
   if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
+
+  // 共有用IDも必ず更新
+lastDeckIdForShare = id;
+const sbtn2 = document.getElementById("shareBtn");
+if (sbtn2) sbtn2.dataset.deckId = id;
+
 
   // 5) 集計UIと自票ハイライトは消しておく（“表示だけ”に徹する）
   resetResults();
