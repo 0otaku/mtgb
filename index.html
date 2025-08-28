@@ -548,22 +548,38 @@ function extractDeckIdFromUrl(u){
   return (String(u||"").match(/decks\/(\d{4,})/) || String(u||"").match(/^(\d{4,})$/) || [])[1] || null;
 }
 async function findDeckByUrlOrId(url){
-  // 1) URL 完全一致
-  let r = await sb.from("decks")
-    .select("id,source_url,deck_name,deck_text_ja,registered_at")
-    .eq("source_url", url).maybeSingle();
-  if (r?.data?.id) return r.data;
+  // 新旧スキーマどちらでも存在する安全な列
+  const BASE_COLS = "id,source_url,deck_name,registered_at";
 
-  // 2) ID 一致（URL 正規化違いの救済）
-  const id = extractDeckIdFromUrl(url);
-  if (id){
-    r = await sb.from("decks")
-      .select("id,source_url,deck_name,deck_text_ja,registered_at")
-      .eq("id", id).maybeSingle();
-    if (r?.data?.id) return r.data;
+  async function sel(field, value){
+    if (value == null) return null;
+
+    // 1) まず deck_text_ja を含めずに取得（42703回避）
+    try {
+      const r1 = await sb.from("decks")
+        .select(BASE_COLS)
+        .eq(field, value)
+        .maybeSingle();
+      if (!r1.error && r1.data) return r1.data;
+    } catch {}
+
+    // 2) 列がある環境ではフォールバックで付けて再取得
+    try {
+      const r2 = await sb.from("decks")
+        .select(`${BASE_COLS},deck_text_ja`)
+        .eq(field, value)
+        .maybeSingle();
+      if (!r2.error && r2.data) return r2.data;
+    } catch {}
+
+    return null;
   }
-  return null;
+
+  // URL 完全一致 → ID 救済
+  return (await sel("source_url", url))
+      || (await sel("id", extractDeckIdFromUrl(url)));
 }
+
 const $ = (q)=>document.querySelector(q);
 const toastEl = $("#toast");
 function toast(msg){
@@ -1163,34 +1179,40 @@ async function runSearch(){
   try {
     const row = await ensureDeckExists(url);
     await showDeckByRow(row, { showResults: false }); // ← 非表示
-    } catch (e) {
-  const msg = String(e?.message ?? e ?? "");
-  // 409/既存だがRLS等で読めない・validator系で弾かれた等 → 埋め込みのみ表示
-  if (/already_registered_but_not_readable|validator_/i.test(msg)) {
-    setEmbed(url);
-    resizeEmbedScaler();
+  } catch (e) {
+    const msg = String(e?.message ?? e ?? "");
+    // 409/既存だがRLS等で読めない・validator系で弾かれた等 → 埋め込みのみ表示
+    if (/already_registered_but_not_readable|validator_/i.test(msg)) {
+      setEmbed(url);
+      resizeEmbedScaler();
 
-    const id = toDeckId(url);
-    const titleEl = document.querySelector('[data-deck-title]');
-    if (titleEl) {
-      titleEl.textContent = id ? `#${id}` : "#???????";
-      titleEl.href = url;
+      const id = toDeckId(url);
+      const titleEl = document.querySelector('[data-deck-title]');
+      if (titleEl) {
+        titleEl.textContent = id ? `#${id}` : "#???????";
+        titleEl.href = url;
+      }
+      if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
+
+      // “表示だけ”の状態にリセット
+      resetResults();
+      markMyVote(null);
+      deckShownAtMs = performance.now();
+
+      // ★ ここに追加：裏で登録→表示を再試行（成功したら自動で投票可能に切替）
+      (async ()=>{
+        try{
+          const row2 = await ensureDeckExists(url);
+          await showDeckByRow(row2, { showResults:false });
+        }catch(e2){
+          console.warn("background ensureDeck (search) failed:", e2);
+        }
+      })();
+
+      return; // ← この直前が挿入ポイント
     }
-    if (id) history.replaceState(null, "", `${APP_URL}?deck=${id}`);
-
-// 共有用IDも必ず更新
-lastDeckIdForShare = id;
-const sbtn1 = document.getElementById("shareBtn");
-if (sbtn1) sbtn1.dataset.deckId = id;
-
-    resetResults();
-    markMyVote(null);
-    deckShownAtMs = performance.now();
-
-    return;
+    toast("デッキの取得に失敗しました: " + msg);
   }
-  toast("デッキの取得に失敗しました: " + msg);
-}
 }
 
 // IME
@@ -1203,14 +1225,43 @@ bindOnce(searchInput, "keydown", (e)=> {
   if (!composing && e.key === "Enter") { e.preventDefault(); runSearch(); }
 });
 
+// ★ 投票前に必ず deck_id を確定させる
+async function ensureDeckIdReady(){
+  if (currentDeck?.id) return true;
+
+  // どこから来たかに関わらず URL を復元
+  const url =
+    currentDeck?.source_url ||
+    (typeof openHareruyaLink !== "undefined" ? openHareruyaLink?.href : null) ||
+    (()=>{ const did = toDeckId(new URLSearchParams(location.search).get("deck")); return did ? `https://www.hareruyamtg.com/decks/${did}` : null; })();
+
+  if (!url) return false;
+
+  try{
+    // DB 未登録/参照不可でもここで登録→再取得を試す
+    const row = await ensureDeckExists(url);
+    await showDeckByRow(row, { showResults:false });
+    return true;
+  }catch(e){
+    console.warn("ensureDeckIdReady failed:", e);
+    return false;
+  }
+}
+
 /* ===== 投票 ===== */
 let voting = false;
 function setVoting(b){ voting=b; for(const btn of voteChips){ btn.disabled=b; } }
 
+// POST 本体（ヘッダに x-session-id を付与）
 async function postVoteOnce(bracket, rtSec){
   const res = await fetch(FN_VOTE, {
     method: "POST",
-    headers: { "Content-Type": "application/json","Authorization": "Bearer " + SUPABASE_ANON,"apikey": SUPABASE_ANON },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + SUPABASE_ANON,
+      "apikey": SUPABASE_ANON,
+      "x-session-id": sid
+    },
     body: JSON.stringify({ deck_id: currentDeck.id, session_id: sid, bracket, rt_sec: rtSec })
   });
   let ok = res.ok;
@@ -1228,9 +1279,18 @@ async function postVoteWithRetry(bracket, rtSec){
   return false;
 }
 
+// ← これだけを各ボタンにバインド（1本）
 for (const el of document.querySelectorAll(".chip[data-vote]")){
   el.addEventListener("click", async (e)=>{
-    if (!currentDeck || voting) return;
+    if (voting) return;
+
+    // 直接URL/検索で来た直後でも deck_id を確実に決める
+    if (!(await ensureDeckIdReady())){
+      toast("このデッキはまだ登録処理中のため投票できません。数秒後にお試しください。");
+      return;
+    }
+    if (!currentDeck) return;
+
     const bracket = Number(e.currentTarget.dataset.vote);
     setVoting(true);
     try{
@@ -1245,7 +1305,8 @@ for (const el of document.querySelectorAll(".chip[data-vote]")){
       nextBtn.classList.add("pulse");
       await loadVotesAndRenderResults(true);
 
-      rtLabel.style.display="inline"; rtLabel.textContent = `${rtSec}sec`;
+      rtLabel.style.display="inline";
+      rtLabel.textContent = `${rtSec}sec`;
       pushHistory(rtSec);
       addXPIfFirstVote(rtSec, wasFirst);
       hadMyVoteBefore = true;
@@ -1254,7 +1315,7 @@ for (const el of document.querySelectorAll(".chip[data-vote]")){
       showReasonPanel();
 
       clearInterval(autoNextTimer); autoNextTimer=null;
-      if (autoNextEnabled) {
+      if (autoNextEnabled){
         let left = 10;
         autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`;
         autoNextTimer = setInterval(()=>{
@@ -1262,11 +1323,15 @@ for (const el of document.querySelectorAll(".chip[data-vote]")){
           if(left<=0){ clearInterval(autoNextTimer); autoNextTimer=null; reasonPanel.style.display="none"; loadRandomDeck(); }
           else { autoNextHint.textContent = `${left}秒後に自動で次のデッキへ`; }
         }, 1000);
-      } else {
+      }else{
         autoNextHint.textContent = "";
       }
-    }catch{ toast("保存エラーが発生しました。"); }
-    finally{ setVoting(false); }
+    }catch(err){
+      console.warn("vote failed:", err);
+      toast("保存エラーが発生しました。");
+    }finally{
+      setVoting(false);
+    }
   });
 }
 
@@ -1829,6 +1894,15 @@ catch (e) {
   // 2) 埋め込みは必ず表示
   setEmbed(url);
   resizeEmbedScaler();
+  // ★ 裏で登録→表示を再試行（成功したら自動で投票可能状態へ）
+(async ()=>{
+  try{
+    const row2 = await ensureDeckExists(url);
+    await showDeckByRow(row2, { showResults:false });
+  }catch(e2){
+    console.warn("background ensureDeck (paramDeck) failed:", e2);
+  }
+})();
 
   // 3) タイトルとURLだけは更新（#1234567 表示・リンク先を保持）
   const id = toDeckId(url);
